@@ -175,7 +175,7 @@ class VoyageProvider(EmbeddingProvider):
         return resp.json()["data"][0]["embedding"]
 
     def dims(self) -> int:
-        return 1024
+        return 512
 
     def health(self) -> bool:
         if not self._api_key:
