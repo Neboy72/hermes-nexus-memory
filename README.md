@@ -51,9 +51,11 @@ One plugin. Three backends. Same tools, same API, same results.
 |----------|------|-------|------|---------|
 | `sentence-transformers` | In-process Python | `pip install sentence-transformers` | 384 | Good ✅ *(default)* |
 | `ollama` | Local service | Ollama running + `ollama pull nomic-embed-text` | 768 | Better |
-| `voyage` | Cloud API | Voyage API key in `.env` | 1024 | Best |
+| [`voyage`](https://www.voyageai.com) | Cloud API | [Get API key](https://www.voyageai.com) → `.env` | 1024 | Best |
 
 **Default is `sentence-transformers`** — no external service, no account, no API key. Works immediately.
+
+**`voyage`** — Best quality with cloud embeddings. [Sign up at voyageai.com](https://www.voyageai.com) for an API key, add `VOYAGE_API_KEY=...` to your `.env` file.
 
 ## Architecture
 
