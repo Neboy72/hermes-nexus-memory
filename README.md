@@ -1,17 +1,18 @@
 # Hermes Nexus Memory 🧠
 
 ![GitHub Stars](https://img.shields.io/github/stars/Neboy72/hermes-nexus-memory?style=flat-square&logo=github)
-![MIT License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)
+![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)
 ![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)
-[![Install](https://img.shields.io/badge/install-one%20command-brightgreen?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory)
-[![Documentation](https://img.shields.io/badge/docs-Hermes%20Agent-important?style=flat-square)](https://hermes-agent.nousresearch.com/docs)
+![Release](https://img.shields.io/github/v/release/Neboy72/hermes-nexus-memory?style=flat-square)
 
-> **Qdrant vector memory plugin for Hermes Agent — persistent, local, 400 lines, zero external APIs.**
+> **Persistent vector memory for Hermes Agent — 3 embedding backends, ~400 lines, local-first.**
+
+Your agent forgets everything after each session. Nexus fixes that.
+
+Semantic search over facts, decisions, and patterns. Persists across restarts. Zero cloud dependencies by default.
 
 ## Quick Start
-
-One command, done:
 
 ```bash
 curl -sL https://raw.githubusercontent.com/Neboy72/hermes-nexus-memory/main/install.sh | bash
@@ -32,7 +33,7 @@ hermes memory setup
 # → Done.
 ```
 
-## What You Get
+## Tools
 
 | Tool | Purpose |
 |------|---------|
@@ -40,7 +41,7 @@ hermes memory setup
 | `nexus_remember(content, category, source)` | Save facts, decisions, preferences, patterns |
 | `nexus_forget(memory_id)` | Remove a specific memory |
 
-**Once saved, it persists across sessions, model switches, and gateway restarts.** Your agent actually remembers.
+**Once saved, it persists across sessions, model switches, and gateway restarts.**
 
 ## Embedding Providers
 
@@ -71,9 +72,9 @@ One plugin. Three backends. Same tools, same API, same results.
 │         └──────┬───────┘                                  │
 │                │                                           │
 │   ┌────────────┴────────────────────────────┐             │
-│   │  NexusMemoryProvider (~400 LOC)         │             │
-│   │  nexus_search │ nexus_remember          │             │
-│   │  nexus_forget │ auto-adapts             │             │
+│   │  NexusMemoryProvider (~400 LOC)          │             │
+│   │  nexus_search │ nexus_remember           │             │
+│   │  nexus_forget │ auto-adapts              │             │
 │   └─────────────────────────────────────────┘             │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -112,4 +113,4 @@ MIT — use it, modify it, ship it.
 
 ---
 
-<sub>Built by [Nebo](https://github.com/Neboy72) · [X](https://x.com/Neboy53623962) · May 2026</sub>
+<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026</sub>
