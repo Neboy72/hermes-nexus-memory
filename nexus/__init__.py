@@ -6,12 +6,20 @@ Three layers of intelligence:
 - Health: Belief drift detection (anti-staleness)
 """
 
+import logging
+from datetime import date, datetime
+from typing import Any
+
 from nexus.health import DriftDetector, DriftReport
 from nexus.retrieval import HybridRetriever
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
+
+_logger = logging.getLogger(__name__)
+
 
 # ── Convenience: update an existing memory in-place ──────────────────────
+
 
 def nexus_update(
     point_id: str,
@@ -87,9 +95,398 @@ def nexus_update(
     return r3.json()
 
 
+# ── Bi-temporal Metadata ─────────────────────────────────────────────────
+
+
+def _today_iso() -> str:
+    """Return today's date as ISO-8601 string."""
+    return date.today().isoformat()
+
+
+# ── Convenience: store a new memory with bi-temporal metadata ──────────
+
+
+def nexus_remember(
+    content: str,
+    category: str = "fact",
+    metadata: dict | None = None,
+    valid_from: str | None = None,
+    qdrant_host: str = "localhost",
+    qdrant_port: int = 6333,
+    collection_name: str = "hermes-memory",
+    **kwargs: Any,
+) -> dict:
+    """Store a new memory with bi-temporal metadata.
+
+    Automatically sets ``valid_from`` to today if not provided.  Pass
+    ``valid_until`` inside *metadata* (or via keyword) for expiry-aware
+    storage.
+
+    Args:
+        content: The memory content text.
+        category: Category tag (default ``"fact"``).
+        metadata: Additional metadata dict to merge.
+        valid_from: ISO-8601 date string. Defaults to today if omitted.
+        qdrant_host: Qdrant host.
+        qdrant_port: Qdrant port.
+        collection_name: Qdrant collection name.
+        **kwargs: Extra keyword arguments forwarded as metadata fields.
+
+    Returns:
+        dict with the Qdrant API upsert response.
+
+    Raises:
+        ImportError: If ``requests`` is not available.
+        ConnectionError: If Qdrant is unreachable.
+    """
+    import requests as _req
+
+    # Build payload
+    payload: dict[str, Any] = {
+        "content": content,
+        "category": category,
+        "timestamp": datetime.now().isoformat(),
+        "valid_from": valid_from or _today_iso(),
+        "valid_until": None,
+    }
+    if metadata:
+        payload.update(metadata)
+    for k, v in kwargs.items():
+        payload[k] = v
+    # Ensure valid_from is always set
+    if payload.get("valid_from") is None:
+        payload["valid_from"] = _today_iso()
+
+    # Build vector (empty — Qdrant will fail if no vector; caller
+    # is expected to have set up an auto-embedding pipeline, or
+    # embed beforehand and pass via ``vector`` kwarg).
+    vector = payload.pop("vector", None) or []
+
+    url = f"http://{qdrant_host}:{qdrant_port}/collections/{collection_name}/points"
+    data = {"points": [{"id": payload.pop("id", None), "vector": vector, "payload": payload}]}
+    r = _req.put(url, json=data, timeout=10)
+    return r.json()
+
+
+# ── Auto-Fix / Consolidation ────────────────────────────────────────────
+
+
+def nexus_consolidate(
+    contradiction_pairs: list[dict],
+    dry_run: bool = True,
+    qdrant_host: str = "localhost",
+    qdrant_port: int = 6333,
+    collection_name: str = "hermes-memory",
+) -> list[dict]:
+    """Resolve detected contradictions by marking older entries as historical.
+
+    For each contradiction pair, the **older** entry (determined by
+    ``created_at`` / ``timestamp`` in payload) is marked:
+      - ``valid_until`` → today's date
+      - ``status`` → ``"HISTORICAL"``
+
+    The **newer** entry gets:
+      - ``valid_from`` → today's date (if not already set)
+
+    Works via Qdrant HTTP API — same pattern as :func:`nexus_update`.
+
+    Args:
+        contradiction_pairs: List of dicts as returned by
+            :meth:`DriftDetector.detect_contradictions`.  Each pair must
+            contain ``id_a`` and ``id_b`` keys.
+        dry_run: If ``True`` (default), simulate the actions without
+            modifying Qdrant.
+        qdrant_host: Qdrant host.
+        qdrant_port: Qdrant port.
+        collection_name: Qdrant collection name.
+
+    Returns:
+        List of action dicts, for example::
+
+            [
+                {
+                    "action": "mark_historical",
+                    "id": "abc-123",
+                    "reason": "Older entry in contradiction pair (id_b=def-456)",
+                },
+                {
+                    "action": "set_valid_from",
+                    "id": "def-456",
+                    "reason": "Newer entry in contradiction pair — valid_from set to today",
+                },
+            ]
+
+    Raises:
+        ImportError: If ``requests`` is not available.
+    """
+    import requests as _req
+
+    today = _today_iso()
+    actions: list[dict] = []
+
+    for pair in contradiction_pairs:
+        id_a = pair.get("id_a", "")
+        id_b = pair.get("id_b", "")
+        if not id_a or not id_b:
+            _logger.warning("Skipping contradiction pair missing id_a/id_b: %s", pair)
+            continue
+
+        # Fetch both points to determine timestamps
+        def _fetch_point(pid: str) -> dict | None:
+            base = f"http://{qdrant_host}:{qdrant_port}"
+            # Direct point lookup
+            try:
+                r = _req.get(
+                    f"{base}/collections/{collection_name}/points/{pid}",
+                    timeout=10,
+                )
+                if r.status_code == 200:
+                    result = r.json().get("result")
+                    if result:
+                        return result
+            except Exception:
+                pass
+            # Fallback: scroll filter
+            try:
+                r = _req.post(
+                    f"{base}/collections/{collection_name}/points/scroll",
+                    json={
+                        "limit": 1,
+                        "with_payload": True,
+                        "filter": {
+                            "must": [{"key": "id", "match": {"value": pid}}]
+                        },
+                    },
+                    timeout=10,
+                )
+                points = r.json().get("result", {}).get("points", [])
+                return points[0] if points else None
+            except Exception:
+                return None
+
+        point_a = _fetch_point(id_a)
+        point_b = _fetch_point(id_b)
+
+        if not point_a or not point_b:
+            _logger.warning(
+                "Could not fetch one or both points for contradiction pair: %s, %s",
+                id_a,
+                id_b,
+            )
+            continue
+
+        payload_a = point_a.get("payload", {})
+        payload_b = point_b.get("payload", {})
+
+        # Determine older vs newer by timestamp
+        ts_a = payload_a.get("timestamp", payload_a.get("created_at", ""))
+        ts_b = payload_b.get("timestamp", payload_b.get("created_at", ""))
+
+        # If timestamps cannot be resolved, use id ordering as fallback
+        if ts_a and ts_b:
+            older_id, newer_id = (id_a, id_b) if ts_a < ts_b else (id_b, id_a)
+            older_payload, newer_payload = (
+                (payload_a, payload_b)
+                if ts_a < ts_b
+                else (payload_b, payload_a)
+            )
+        else:
+            # Fallback: treat id_a as older (as returned by detection)
+            older_id, newer_id = id_a, id_b
+            older_payload, newer_payload = payload_a, payload_b
+
+        # ── Action 1: Mark older entry as historical ─────────────────────
+        action_older = {
+            "action": "mark_historical",
+            "id": older_id,
+            "reason": (
+                f"Older entry in contradiction pair (id_b={newer_id}, "
+                f"type={pair.get('type', 'contradiction')})"
+            ),
+        }
+        actions.append(action_older)
+
+        # ── Action 2: Set valid_from on newer entry ─────────────────────
+        action_newer = {
+            "action": "set_valid_from",
+            "id": newer_id,
+            "reason": (
+                f"Newer entry in contradiction pair (id_a={older_id}) — "
+                f"valid_from set to {today}"
+            ),
+        }
+        actions.append(action_newer)
+
+        if not dry_run:
+            # Apply older entry changes
+            _apply_consolidation(
+                older_id,
+                {"valid_until": today, "status": "HISTORICAL"},
+                qdrant_host,
+                qdrant_port,
+                collection_name,
+            )
+            # Apply newer entry changes
+            if not newer_payload.get("valid_from"):
+                _apply_consolidation(
+                    newer_id,
+                    {"valid_from": today},
+                    qdrant_host,
+                    qdrant_port,
+                    collection_name,
+                )
+
+    return actions
+
+
+def _apply_consolidation(
+    point_id: str,
+    metadata_updates: dict,
+    qdrant_host: str,
+    qdrant_port: int,
+    collection_name: str,
+) -> dict:
+    """Apply metadata updates to a Qdrant point (internal helper).
+
+    Uses the same HTTP API pattern as :func:`nexus_update`.
+    """
+    import requests as _req
+
+    base = f"http://{qdrant_host}:{qdrant_port}"
+    url = f"{base}/collections/{collection_name}/points"
+
+    # Fetch existing point
+    point = None
+    try:
+        r = _req.get(f"{url}/{point_id}", timeout=10)
+        if r.status_code == 200:
+            point = r.json().get("result")
+    except Exception:
+        pass
+
+    if not point:
+        # Fallback scroll
+        try:
+            r = _req.post(
+                f"{base}/collections/{collection_name}/points/scroll",
+                json={
+                    "limit": 1,
+                    "with_payload": True,
+                    "filter": {
+                        "must": [{"key": "id", "match": {"value": point_id}}]
+                    },
+                },
+                timeout=10,
+            )
+            points = r.json().get("result", {}).get("points", [])
+            point = points[0] if points else None
+        except Exception:
+            pass
+
+    if not point:
+        return {"error": f"Point {point_id} not found"}
+
+    payload = dict(point.get("payload", {}))
+    payload.update(metadata_updates)
+    vector = point.get("vector", [])
+
+    r = _req.put(
+        url,
+        json={
+            "points": [
+                {"id": point["id"], "vector": vector, "payload": payload}
+            ]
+        },
+        timeout=10,
+    )
+    return r.json()
+
+
+# ── Temporal Querying ──────────────────────────────────────────────────
+
+
+def nexus_query_valid(
+    query: str,
+    at_date: str | None = None,
+    qdrant_host: str = "localhost",
+    qdrant_port: int = 6333,
+    collection_name: str = "hermes-memory",
+    limit: int = 10,
+) -> list[dict]:
+    """Query memories that are valid at a specific date.
+
+    Filters results to only those whose temporal validity interval
+    (``valid_from`` … ``valid_until``) covers the given date.
+
+    Args:
+        query: The search query text (used via Qdrant scroll — for
+            proper vector search, embed first and use the Qdrant
+            search API directly).
+        at_date: ISO-8601 date string (e.g. ``"2026-06-01"``).
+            Defaults to today.
+        qdrant_host: Qdrant host.
+        qdrant_port: Qdrant port.
+        collection_name: Qdrant collection name.
+        limit: Maximum number of results to return.
+
+    Returns:
+        List of point dicts with payload that are valid at *at_date*.
+
+    Raises:
+        ImportError: If ``requests`` is not available.
+    """
+    import requests as _req
+
+    target_date = at_date or _today_iso()
+
+    base = f"http://{qdrant_host}:{qdrant_port}"
+    all_points = []
+
+    # Scroll all points (simple approach — no vector search)
+    offset = None
+    while True:
+        body: dict = {"limit": 100, "with_payload": True}
+        if offset:
+            body["offset"] = offset
+        r = _req.post(
+            f"{base}/collections/{collection_name}/points/scroll",
+            json=body,
+            timeout=10,
+        )
+        data = r.json().get("result", {})
+        batch = data.get("points", [])
+        if not batch:
+            break
+        all_points.extend(batch)
+        offset = data.get("next_page_offset")
+        if not offset:
+            break
+
+    # Filter by temporal validity
+    valid = []
+    for p in all_points:
+        payload = p.get("payload", {})
+        vf = payload.get("valid_from")
+        vu = payload.get("valid_until")
+
+        if vf and target_date < vf:
+            continue
+        if vu and target_date > vu:
+            continue
+
+        valid.append(p)
+        if len(valid) >= limit:
+            break
+
+    return valid
+
+
 __all__ = [
     "HybridRetriever",
     "DriftDetector",
     "DriftReport",
     "nexus_update",
+    "nexus_remember",
+    "nexus_consolidate",
+    "nexus_query_valid",
 ]

@@ -77,6 +77,11 @@ DEFAULT_STALE_PATTERNS = [
      "Ollama listed as local — may have moved to cloud"),
 ]
 
+# ── Historical Exclusion ────────────────────────────────────────────────────
+# Entries with these statuses are excluded from drift detection.
+
+HISTORICAL_MARKER_STATUSES = ["HISTORICAL", "RESOLVED", "ARCHIVED", "FIXED"]
+
 
 @dataclass
 class DriftReport:
@@ -87,6 +92,7 @@ class DriftReport:
     mismatches: list[str] = field(default_factory=list)
     score: float = 0.0
     contradictions: list[dict] = field(default_factory=list)
+    excluded_count: int = 0
 
     @property
     def summary(self) -> str:
@@ -101,6 +107,7 @@ class DriftReport:
             "old_count": len(self.old),
             "mismatches": self.mismatches,
             "contradictions": len(self.contradictions),
+            "excluded_count": self.excluded_count,
             "score": self.score,
         }, indent=2)
 
@@ -129,6 +136,22 @@ class DriftDetector:
         self.old_threshold = timedelta(days=old_threshold_days)
 
     # ── Private helpers ─────────────────────────────────────────────────────
+
+    @staticmethod
+    def _is_excluded(payload: dict) -> bool:
+        """Check if an entry should be excluded from drift detection.
+
+        Entries whose ``status`` metadata field matches one of the
+        :const:`HISTORICAL_MARKER_STATUSES` are excluded.
+
+        Args:
+            payload: The point's payload dict.
+
+        Returns:
+            ``True`` if the entry should be skipped.
+        """
+        status = payload.get("status", "")
+        return status in HISTORICAL_MARKER_STATUSES
 
     def _scroll_all(self) -> list[dict]:
         """Pull all points from Qdrant."""
@@ -222,7 +245,7 @@ class DriftDetector:
 
         Returns:
             DriftReport with score, stale entries, old entries, mismatches,
-            and contradictions.
+            contradictions, and excluded_count.
         """
         points = self._scroll_all()
         report = DriftReport(total_entries=len(points))
@@ -231,6 +254,12 @@ class DriftDetector:
 
         for p in points:
             payload = p.get("payload", {})
+
+            # Skip historical / resolved / archived entries
+            if self._is_excluded(payload):
+                report.excluded_count += 1
+                continue
+
             content = payload.get("content", "")
             if not content:
                 content = f"{payload.get('user_content', '')} → {payload.get('assistant_content', '')}"
@@ -267,10 +296,16 @@ class DriftDetector:
             10.0,
         )
 
-        # Also run contradiction detection on the same batch
+        # Also run contradiction detection on the same batch (excluding historical)
         if points:
             try:
-                report.contradictions = self.detect_contradictions(points)
+                # Filter out excluded entries before contradiction detection
+                active_points = [
+                    p for p in points
+                    if not self._is_excluded(p.get("payload", {}))
+                ]
+                if active_points:
+                    report.contradictions = self.detect_contradictions(active_points)
             except Exception:
                 pass
 
@@ -279,12 +314,20 @@ class DriftDetector:
     def run_from_texts(self, entries: list[dict]) -> DriftReport:
         """Run drift detection on a list of dicts (for testing / offline use).
 
-        Each entry: {"id": str, "content": str, "timestamp": str|None}
+        Each entry: {"id": str, "content": str, "timestamp": str|None,
+                     "payload": dict|None}
         """
         report = DriftReport(total_entries=len(entries))
         now = datetime.now()
 
         for entry in entries:
+            payload = entry.get("payload", {})
+
+            # Skip historical / resolved / archived entries
+            if self._is_excluded(payload):
+                report.excluded_count += 1
+                continue
+
             content = entry.get("content", "")
             stale = self._check_stale(content)
             if stale:
@@ -311,9 +354,14 @@ class DriftDetector:
             10.0,
         )
 
-        if entries:
+        # Run contradiction detection on active entries only
+        active_entries = [
+            e for e in entries
+            if not self._is_excluded(e.get("payload", {}))
+        ]
+        if active_entries:
             try:
-                report.contradictions = self.detect_contradictions(entries)
+                report.contradictions = self.detect_contradictions(active_entries)
             except Exception:
                 pass
 
@@ -373,6 +421,11 @@ class DriftDetector:
                 return []
             try:
                 memories = self._scroll_all()
+                # Filter out excluded entries (historical / resolved / archived)
+                memories = [
+                    m for m in memories
+                    if not self._is_excluded(m.get("payload", {}))
+                ]
             except Exception:
                 return []
 
