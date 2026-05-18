@@ -22,7 +22,25 @@ That's it. Your agent will:
 
 ## For AI Agents — Installation Instructions
 
-You are a Hermes Agent (or compatible). The user wants Nexus Memory installed. Execute these steps in order. Do NOT skip verification.
+You are a Hermes Agent (or compatible). The user wants Nexus Memory installed or upgraded. **First determine if this is a fresh install or an upgrade.**
+
+### Step 0: Detect Existing Installation
+
+```bash
+# Check if Nexus Memory is already configured
+hermes config get memory.provider 2>/dev/null
+# If "nexus" → this is an UPGRADE, skip to Step 2b
+# If empty/other → this is a FRESH INSTALL, continue with Step 1
+
+# Check current version
+pip show hermes-nexus-memory 2>/dev/null | grep Version
+# If v1.0.x → upgrade to v1.1.0 (add hybrid + drift detection)
+# If not installed → fresh install
+```
+
+**If already installed (upgrade path):** Skip Step 1 and go directly to **Step 2b: Upgrade**. Do NOT reinstall from scratch — the existing Qdrant collection and memories must be preserved.
+
+**If not installed (fresh install):** Continue with Step 1 below.
 
 ### Step 1: Check Prerequisites
 
@@ -45,7 +63,7 @@ curl -s http://127.0.0.1:6333/healthz
 
 **If Python < 3.11:** Inform the user that Python 3.11+ is required. Abort.
 
-### Step 2: Install the Plugin
+### Step 2: Install the Plugin (Fresh Install)
 
 ```bash
 # Clone the repo
@@ -58,6 +76,27 @@ fi
 
 pip install -e ~/.hermes/hermes-nexus-memory[all]
 ```
+
+### Step 2b: Upgrade from v1.0.x to v1.1.0 (Existing Installation)
+
+**Only follow this if Step 0 detected an existing Nexus installation.**
+
+```bash
+# Pull latest code
+cd ~/.hermes/hermes-nexus-memory
+git pull origin main
+
+# Reinstall (preserves existing Qdrant collection)
+if [ -d ~/.hermes/hermes-agent/venv ]; then
+  source ~/.hermes/hermes-agent/venv/bin/activate
+fi
+pip install -e ~/.hermes/hermes-nexus-memory[all]
+
+# Skip Step 3 — config already set, embedding provider already configured
+# Go directly to Step 4 (Hybrid Retrieval)
+```
+
+**Important:** Do NOT change the embedding provider or Qdrant collection during upgrade. The existing memories must be preserved.
 
 ### Step 3: Configure Hermes
 
