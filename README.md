@@ -17,6 +17,15 @@ Semantic search over facts, decisions, and patterns. Persists across restarts. N
 
 ## What's New
 
+### v1.3.0
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 🔧 **Auto-Fix / `nexus_consolidate()`** | Resolves contradictions automatically, marks older entry as HISTORICAL | Fix problems, not just find them |
+| 🕐 **Bi-temporal Metadata** | `valid_from` / `valid_until` on every memory | Never silently overwrite decisions |
+| 🏛️ **Historical Exclusion** | HISTORICAL/RESOLVED/ARCHIVED entries skipped by drift detection | No false positives on resolved incidents |
+| 📊 **`nexus_query_valid()`** | Filter memories by temporal validity | Query only memories that are currently valid |
+
 ### v1.2.0
 
 | Feature | What it does | Why it matters |
