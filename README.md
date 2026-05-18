@@ -4,8 +4,8 @@
 ![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)
 ![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)
-![Version](https://img.shields.io/badge/version-1.1.0-green?style=flat-square)
-![Bot Self-Install](https://img.shields.io/badge/bot-self--install-🤖-brightgreen?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.2.0-green?style=flat-square)
+![Bot Self-Install](https://img.shields.io/badge/bot-self--install-%F0%9F%A4%96-brightgreen?style=flat-square)
 
 > **Production-grade vector memory for AI agents — hybrid retrieval, drift detection, RAG poisoning defense. 🤖 Bot self-installs.**
 
@@ -15,7 +15,19 @@ Semantic search over facts, decisions, and patterns. Persists across restarts. N
 
 ---
 
-## What's New in v1.1.0
+## What's New
+
+### v1.2.0
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 🔄 **Incremental BM25** | `update_index()` adds/removes without full rebuild | Growing memory stays fast |
+| 🔍 **Contradiction Detection** | Finds semantically opposing memories via embeddings | Catches "X is active" vs "X is disabled" automatically |
+| 📊 **Usage Tracking** | `track_usage()` + `prune_unused(days=90)` | Clean up memories that are never accessed |
+| 🔧 **`nexus_update()`** | Update memories in-place | No more forget+remember with metadata loss |
+| 🏷️ **`source_tier` metadata** | Set tier at store-time, not just keywords | Precise source ranking |
+
+### v1.1.0
 
 | Feature | What it does | Why it matters |
 |---------|-------------|---------------|
