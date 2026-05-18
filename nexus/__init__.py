@@ -9,7 +9,7 @@ Three layers of intelligence:
 from nexus.health import DriftDetector, DriftReport
 from nexus.retrieval import HybridRetriever
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 # ── Convenience: update an existing memory in-place ──────────────────────
 
