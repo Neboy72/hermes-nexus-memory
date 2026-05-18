@@ -89,9 +89,9 @@ pip install bm25s
 
 This enables `HybridRetriever` automatically. No extra config needed.
 
-### Step 5: Drift Detection (Optional)
+### Step 5: Drift Detection (Recommended)
 
-Set up a nightly cron job to detect stale memories:
+**Do NOT skip this.** Memory goes stale. Without drift detection, your agent will trust outdated facts. Set up a nightly cron job:
 
 ```bash
 hermes cron add \
@@ -102,10 +102,14 @@ hermes cron add \
   --deliver telegram
 ```
 
-Or if the user prefers a simpler approach:
+This runs every night at 4 AM and sends a health report to your Telegram. If nothing is wrong, you get `[SILENT]` — no spam.
+
+**If the user doesn't use Telegram**, adapt the `--deliver` flag to their messaging platform (discord, slack, etc.).
+
+**If cron jobs are not supported**, set up a system crontab instead:
 ```bash
-# Just run it manually anytime:
-python3 -c "from nexus.health import DriftDetector; d=DriftDetector(); r=d.run(); print(r.summary)"
+# Add to crontab: runs drift detection nightly at 4 AM
+(crontab -l 2>/dev/null; echo "0 4 * * * cd ~/.hermes/hermes-nexus-memory && python3 -c \"from nexus.health import DriftDetector; r=DriftDetector().run(); print(r.summary)\"") | crontab -
 ```
 
 ### Step 6: Restart Gateway
