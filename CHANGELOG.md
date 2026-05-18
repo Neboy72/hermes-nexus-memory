@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.3.0] — 2026-05-18
+
+### Added
+
+- **Auto-Fix / `nexus_consolidate()`** — Resolves contradiction pairs found by
+  `detect_contradictions()` automatically.
+  - Older entry gets `valid_until: <today>` and `status: HISTORICAL` metadata
+  - Newer entry gets `valid_from: <today>` metadata (if not already set)
+  - `dry_run=True` (default) — returns what it WOULD do without modifying Qdrant
+  - Returns list of action dicts: `[{action, id, reason}, ...]`
+  - Works via Qdrant HTTP API (same pattern as `nexus_update`)
+
+- **Bi-temporal Metadata** — `valid_from` and `valid_until` fields in metadata
+  (ISO-8601 dates, default: null).
+  - `nexus_remember()` updated to auto-set `valid_from: <today>` if not provided
+  - `nexus_query_valid(query, at_date=None)` — filters results to memories
+    valid at a given date by checking `valid_from` / `valid_until` intervals
+  - Backward compatible: existing memories without these fields pass through
+    unmodified
+
+- **Historical Exclusion in Drift Detection** — Entries with `status` in
+  `HISTORICAL_MARKER_STATUSES` (`["HISTORICAL", "RESOLVED", "ARCHIVED", "FIXED"]`)
+  are now excluded from stale pattern checking, age checking, and contradiction
+  detection.
+  - `DriftReport.excluded_count` field tracks how many entries were skipped
+  - `DriftDetector._is_excluded()` helper for consistent exclusion logic
+  - Applied in `run()`, `run_from_texts()`, and `detect_contradictions()`
+
+### Dependencies
+
+- No new dependencies required
+
+---
+
 ## [1.2.0] — Unreleased
 
 ### Added
