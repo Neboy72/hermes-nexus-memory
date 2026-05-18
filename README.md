@@ -5,8 +5,9 @@
 ![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)
 ![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)
 ![Version](https://img.shields.io/badge/version-1.1.0-green?style=flat-square)
+![Bot Self-Install](https://img.shields.io/badge/bot-self--install-🤖-brightgreen?style=flat-square)
 
-> **Production-grade vector memory for AI agents — hybrid retrieval, drift detection, RAG poisoning defense.**
+> **Production-grade vector memory for AI agents — hybrid retrieval, drift detection, RAG poisoning defense. 🤖 Bot self-installs.**
 
 Your agent forgets everything after each session. **Nexus fixes that.**
 
