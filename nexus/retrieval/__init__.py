@@ -55,6 +55,23 @@ SOURCE_TIERS = {
     },
 }
 
+def _resolve_tier(content: str, metadata: dict | None = None) -> tuple[str, float]:
+    """Resolve source tier from metadata (preferred) or content keywords (fallback).
+
+    If a ``source_tier`` field is present in metadata (e.g. "tier1"), use it directly.
+    Otherwise fall back to keyword matching in the content string.
+    """
+    if metadata and "source_tier" in metadata:
+        tier_name = metadata["source_tier"]
+        if tier_name in SOURCE_TIERS:
+            return tier_name, SOURCE_TIERS[tier_name]["boost"]
+    # Fallback: keyword matching
+    text = content.lower()
+    for tier_name, cfg in SOURCE_TIERS.items():
+        if any(kw in text for kw in cfg["keywords"]):
+            return tier_name, cfg["boost"]
+    return "tier3", SOURCE_TIERS["tier3"]["boost"]
+
 RRF_K = 60  # Reciprocal Rank Fusion constant
 
 
@@ -255,17 +272,11 @@ class HybridRetriever:
         ]
 
     def _tier_boost(self, ranked: list[dict]) -> list[dict]:
-        """Apply source-tier boosting."""
+        """Apply source-tier boosting — uses metadata source_tier if available, else keywords."""
         for item in ranked:
-            text = item.get("text", "").lower()
-            tier = "tier3"
-            boost = 0.8
-
-            for tier_name, cfg in SOURCE_TIERS.items():
-                if any(kw in text for kw in cfg["keywords"]):
-                    tier = tier_name
-                    boost = cfg["boost"]
-                    break
+            text = item.get("text", "")
+            metadata = item.get("metadata")  # May be None for BM25-only hits
+            tier, boost = _resolve_tier(text, metadata)
 
             item["tier"] = tier
             item["rrf_score"] *= boost
