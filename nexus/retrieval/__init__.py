@@ -96,7 +96,7 @@ class HybridRetriever:
     # ── Indexing ────────────────────────────────────────────────────────────
 
     def index_memories(self) -> dict:
-        """Pull all memories from Qdrant and build BM25 index.
+        """Pull all memories from Qdrant and build BM25 index (full rebuild).
 
         Returns:
             dict with stats: {indexed, bm25_built, collection}
@@ -161,6 +161,76 @@ class HybridRetriever:
             self._bm25.index(corpus_tokens)
 
         return {"indexed": len(self._ids), "bm25_built": self._bm25 is not None}
+
+    def update_index(
+        self,
+        memories_to_add: list[tuple[str, str]] | None = None,
+        memories_to_remove: list[str] | None = None,
+    ) -> dict:
+        """Incrementally update the BM25 index without a full Qdrant scroll.
+
+        Adds new memories and/or removes specified entries. BM25 is rebuilt
+        from the updated internal corpus (no Qdrant round-trip). This is
+        significantly faster than ``index_memories()`` which scrolls every
+        point from Qdrant.
+
+        Args:
+            memories_to_add: List of ``(id, text)`` tuples to insert.
+            memories_to_remove: List of IDs to remove from the index.
+
+        Returns:
+            dict with stats: {added, removed, total_ids, bm25_built}
+
+        Raises:
+            ImportError: If bm25s is not installed.
+        """
+        if not HAS_BM25:
+            raise ImportError("bm25s is required: pip install bm25s")
+
+        added = 0
+        removed = 0
+        to_add = memories_to_add or []
+        to_remove = memories_to_remove or []
+
+        # --- Handle removals: filter out removed IDs ---
+        if to_remove and self._ids:
+            remove_set = set(to_remove)
+            surviving_ids = []
+            surviving_texts = []
+            for i, pid in enumerate(self._ids):
+                if pid not in remove_set:
+                    surviving_ids.append(pid)
+                    surviving_texts.append(self._texts[i] if i < len(self._texts) else "")
+            removed = len(self._ids) - len(surviving_ids)
+            self._ids = surviving_ids
+            self._texts = surviving_texts
+
+        # --- Handle additions ---
+        if to_add:
+            new_ids = []
+            new_texts = []
+            for pid, text in to_add:
+                if isinstance(pid, str) and isinstance(text, str):
+                    new_ids.append(pid)
+                    new_texts.append(text.lower())
+                    added += 1
+
+            if new_ids:
+                self._ids.extend(new_ids)
+                self._texts.extend(new_texts)
+
+        # Rebuild BM25 from the updated corpus (only if something changed)
+        if (added > 0 or removed > 0) and self._texts:
+            corpus_tokens = bm25s.tokenize(self._texts)
+            self._bm25 = bm25s.BM25()
+            self._bm25.index(corpus_tokens)
+
+        return {
+            "added": added,
+            "removed": removed,
+            "total_ids": len(self._ids),
+            "bm25_built": self._bm25 is not None,
+        }
 
     # ── Search ──────────────────────────────────────────────────────────────
 

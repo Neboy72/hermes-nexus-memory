@@ -1,5 +1,43 @@
 # Changelog
 
+## [1.2.0] — Unreleased
+
+### Added
+
+- **Incremental BM25 Indexing** — `HybridRetriever.update_index()` now allows
+  adding and removing entries from the BM25 index without a full Qdrant scroll.
+  `index_memories()` remains as the full-rebuild fallback.
+  - `update_index(memories_to_add=[(id, text), ...], memories_to_remove=[id, ...])`
+  - Rebuilds BM25 from the updated internal corpus (no Qdrant round-trip)
+  - Significantly faster than full rebuild for small changes
+
+- **Semantic Contradiction Detection** — `DriftDetector.detect_contradictions()`
+  finds pairs of memories that semantically contradict each other using
+  embedding similarity.
+  - Near-duplicate detection (cosine similarity >= 0.85)
+  - Semantic contradiction detection (similarity >= 0.35 with opposing sentiment)
+  - Works with Voyage embeddings (best quality), sentence-transformers (local),
+    or gracefully returns empty results if neither is available
+  - Heuristic sentiment analysis to distinguish genuine contradictions from
+    harmless semantic similarity
+  - Automatically included in `DriftDetector.run()` reports
+
+- **Usage Tracking** — `DriftDetector.track_usage()` and `prune_unused()` for
+  tracking memory access and identifying candidates for pruning.
+  - `track_usage(memory_id)` — records last-accessed timestamp to
+    `~/.hermes/nexus_usage.json`
+  - `prune_unused(days=90)` — returns list of memory IDs not accessed in X days
+  - `get_usage_stats()` — aggregate statistics about tracked usage
+  - Persisted to a simple JSON file; no database required
+
+### Dependencies
+
+- `voyageai` — optional, enables high-quality contradiction detection
+- `sentence-transformers` — optional, enables local embedding for contradiction detection
+- `scikit-learn` — optional, faster cosine similarity in contradiction detection
+
+---
+
 ## [1.1.0] — 2026-05-18
 
 ### Added

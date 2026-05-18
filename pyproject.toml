@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-nexus-memory"
-version = "1.1.0"
+version = "1.2.0"
 description = "Persistent vector memory for Hermes Agent — hybrid retrieval, drift detection, anti-poisoning"
 readme = "README.md"
 license = "MIT"
@@ -34,7 +34,15 @@ dependencies = [
 
 [project.optional-dependencies]
 hybrid = ["bm25s>=0.3"]
-all = ["bm25s>=0.3", "sentence-transformers", "qdrant-client>=1.7"]
+health = ["sentence-transformers", "scikit-learn"]
+contradiction = ["voyageai", "scikit-learn"]
+all = [
+    "bm25s>=0.3",
+    "sentence-transformers",
+    "qdrant-client>=1.7",
+    "voyageai",
+    "scikit-learn",
+]
 
 [tool.setuptools.packages.find]
 include = ["nexus*"]
