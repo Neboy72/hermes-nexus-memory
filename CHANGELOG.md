@@ -15,6 +15,7 @@
   - 🟡 Tier 2: Curated sources — Medium, arXiv, GitHub (1.0×)
   - 🔴 Tier 3: Uncurated — Reddit, Twitter, unknown (0.8× penalty)
   - Prevents untrusted content from outranking your own data
+  - **Now supports `source_tier` metadata field** — set `source_tier: "tier1"` when storing memories for precise tier assignment. Falls back to keyword matching if no metadata tier is set.
 
 - **Belief Drift Detection** — Automated memory health monitoring
   - Regex-based stale pattern detection (DeepSeek listed as active, wrong embeddings, etc.)
@@ -23,11 +24,18 @@
   - `nexus.health.DriftDetector` — standalone class, works with or without Qdrant
   - Custom stale patterns supported
 
+- **`nexus_update()`** — Update memories in-place without losing metadata
+  - Unlike forget + remember, preserves all metadata (category, source_tier, timestamps)
+  - Update content, metadata, or both
+  - `from nexus import nexus_update`
+
 ### Changed
 
+- **Source Tier Boosting now supports `source_tier` metadata field** — set when storing memories for precise tier assignment, falls back to keyword matching
 - README rewritten with full API docs, architecture diagrams, and comparison table
 - Added `pyproject.toml` for pip-installable package
 - Added example scripts in `examples/`
+- Added security note: Qdrant defaults to localhost with no auth — use firewall rules or API key in production
 
 ### Dependencies
 
