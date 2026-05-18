@@ -26,11 +26,23 @@ Semantic search over facts, decisions, and patterns. Persists across restarts. N
 
 ## Quick Start
 
+### 🤖 Tell your agent to install it
+
+Send this prompt to your Hermes agent:
+
+```
+Read https://raw.githubusercontent.com/Neboy72/hermes-nexus-memory/main/AGENTS.md and follow the installation instructions.
+```
+
+Your agent will check prerequisites, install everything, configure the provider, and verify. Zero manual steps.
+
+### 🛠️ Or install manually
+
 ```bash
 # Install the plugin
 curl -sL https://raw.githubusercontent.com/Neboy72/hermes-nexus-memory/main/install.sh | bash
 
-# Or manually:
+# Or use the built-in wizard:
 hermes memory setup   # → Select "nexus" → Pick embedding provider → Done.
 ```
 
