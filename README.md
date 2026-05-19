@@ -278,6 +278,8 @@ One plugin. Three backends. Same tools, same API, same results.
 
 - **[OpenClaw Nexus Memory](https://github.com/Neboy72/openclaw-nexus-memory)** — Production-grade memory management for OpenClaw agents (stale auto-fix, contradiction detection, knowledge gaps, wiki integration. No database required.)
 
+> ⭐ Found it useful? Give it a star on [GitHub](https://github.com/Neboy72/hermes-nexus-memory) — it helps others find it!
+
 ## License
 
 MIT — use it, modify it, ship it.
