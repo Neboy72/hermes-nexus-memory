@@ -273,11 +273,10 @@ One plugin. Three backends. Same tools, same API, same results.
 | Embedding unhealthy | `grep 'Nexus memory' agent.log` | Switch via `hermes config set` |
 | Drift score high | Run `DriftDetector` standalone | Review stale entries, clean up |
 
-## See Also
 
-**[OpenClaw Nexus Memory](https://github.com/Neboy72/openclaw-nexus-memory)** — Memory health for `.md`-based agents. Auto-fix stale entries, contradiction patterns, knowledge gaps, wiki integration. No database required. Complementary approach for agents that store memory in Markdown files.
+## Related Projects
 
----
+- **[OpenClaw Nexus Memory](https://github.com/Neboy72/openclaw-nexus-memory)** — Production-grade memory management for OpenClaw agents (stale auto-fix, contradiction detection, knowledge gaps, wiki integration. No database required.)
 
 ## License
 
