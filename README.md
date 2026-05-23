@@ -18,7 +18,8 @@ Nexus Memory fixes that. **Permanently.**
 
 Your agent remembers across sessions — facts, decisions, patterns.  
 Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stale memories automatically.  
-**No nonsense. No bloat. Just memory that works.**
+**No nonsense. No bloat. Just memory that works.**  
+**No API keys needed. Local by default — cloud if you want.**
 
 [![Star the repo](https://img.shields.io/badge/⭐-Star%20on%20GitHub-gold?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory)
 
