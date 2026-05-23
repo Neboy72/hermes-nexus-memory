@@ -12,6 +12,8 @@ Nexus Memory fixes that. **Permanently.**
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
 [![Version](https://img.shields.io/badge/version-1.5.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
+> ⭐ **If this project helps your agent remember — drop a star so others find it too. Takes 2 seconds.**
+
 > **Bot Self-Install:** Tell your AI: *"Read AGENTS.md and install Nexus Memory."* It does the rest.
 
 Your agent remembers across sessions — facts, decisions, patterns.  
