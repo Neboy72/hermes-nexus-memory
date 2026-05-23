@@ -248,7 +248,7 @@ One plugin. Three backends. Same tools, same API, same results.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                       NEXUS MEMORY v1.1                       │
+│                       NEXUS MEMORY v1.5                       │
 │                                                              │
 │  Core ──────────── Semantic vector search (Qdrant)           │
 │  Retrieval ─────── Hybrid BM25 + Vector + RRF + Tier Boost   │
@@ -316,4 +316,4 @@ MIT — use it, modify it, ship it.
 
 ---
 
-<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.3.0 — Auto-Fix + Bi-Temporal + Historical Exclusion</sub>
+<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.5.0 — Authority Chain</sub>
