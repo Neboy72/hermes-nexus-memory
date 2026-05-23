@@ -283,10 +283,10 @@ One plugin. Three backends. Same tools, same API, same results.
 | 🗣️ **Authority Chain** | ❌ | ❌ | ❌ | **✅ 6-level priority resolution** |
 | 🔧 **Auto-Fix / Consolidation** | ❌ | ❌ | ❌ | **✅ `nexus_consolidate()`** |
 | External APIs | Gemini required | None | Multiple cloud APIs | **Optional** |
-| Code size | ~50K TypeScript | ~1.5K Python | Varies | **~800 Python** |
+| Code size | ~50K TypeScript | ~1.5K Python | Varies | **~2.2K Python** |
 | Setup time | 30+ min + OAuth | `hermes memory setup` | Cloud account | **1 command** |
 
-**Nexus is the only memory plugin with hybrid retrieval, drift detection, and anti-poisoning — in under 1000 lines.**
+**Nexus is the only memory plugin with drift detection, provenance, and authority chain — plus hybrid retrieval, all in one package.**
 
 ---
 
