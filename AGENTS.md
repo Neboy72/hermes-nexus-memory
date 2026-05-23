@@ -85,7 +85,7 @@ fi
 pip install -e ~/.hermes/hermes-nexus-memory[all]
 ```
 
-### Step 2b: Upgrade from v1.3.x to v1.4.0 (Existing Installation)
+### Step 2b: Upgrade from v1.4.x to v1.5.0 (Existing Installation)
 
 **Only follow this if Step 0 detected an existing Nexus installation.**
 
@@ -187,7 +187,7 @@ hermes status | grep -i nexus
 After installation, report:
 
 ```
-✅ Nexus Memory v1.4.0 installed
+✅ Nexus Memory v1.5.0 installed
 
 • Embedding: <provider chosen>
 • Hybrid Retrieval: <installed/skipped>
