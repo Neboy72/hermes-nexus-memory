@@ -36,6 +36,14 @@ hermes config get memory.provider 2>/dev/null
 pip show hermes-nexus-memory 2>/dev/null | grep Version
 # If v1.0.x → upgrade to v1.1.0 (add hybrid + drift detection)
 # If not installed → fresh install
+
+# 🔔 AUTO-UPDATE CHECK: Compare local version with GitHub latest
+LOCAL=$(pip show hermes-nexus-memory 2>/dev/null | grep Version | cut -d' ' -f2)
+REMOTE=$(curl -s https://api.github.com/repos/Neboy72/hermes-nexus-memory/releases/latest 2>/dev/null \
+         | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('tag_name',''))" 2>/dev/null)
+if [ -n "$REMOTE" ] && [ "$LOCAL" != "$REMOTE" ]; then
+    echo "📢 New version $REMOTE available (you have $LOCAL). Update by saying: upgrade nexus memory"
+fi
 ```
 
 **If already installed (upgrade path):** Skip Step 1 and go directly to **Step 2b: Upgrade**. Do NOT reinstall from scratch — the existing Qdrant collection and memories must be preserved.
@@ -179,15 +187,28 @@ hermes status | grep -i nexus
 After installation, report:
 
 ```
-✅ Nexus Memory v1.1.0 installed
+✅ Nexus Memory v1.4.0 installed
 
 • Embedding: <provider chosen>
 • Hybrid Retrieval: <installed/skipped>
 • Drift Detection: <cron set up / manual only>
 • Qdrant: running on localhost:6333
+• Auto-Update: ✅ I'll check for new versions at startup
 
 Tools available: nexus_search, nexus_remember, nexus_forget
 ```
+
+### Step 9: Auto-Update Check (Rundum-Sorglos)
+
+Der Bot prüft bei **jedem Session-Start** automatisch ob ein neues Release auf GitHub ist.
+Wenn ja, sagt er dem User Bescheid — kein Watch, keine E-Mail, nichts manuelles nötig.
+
+Der Check läuft automatisch über den Code in **Step 0** oben. Sobald ein neues Release
+erscheint, sieht der User:
+
+> 📢 New version v1.5.0 available (you have v1.4.0). Update by saying: upgrade nexus memory
+
+Ein Upgrade macht der Bot dann selbstständig (Step 2b). Kein manuelles Eingreifen nötig.
 
 ---
 
