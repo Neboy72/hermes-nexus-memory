@@ -37,7 +37,7 @@
 
 - `nexus_remember()` erweiterte Signatur: `provenance`, `created_by`, `session_id`, `source_type`
 - `nexus_update()` erweiterte Signatur: `modified_by`
-- Version: `1.4.0`
+- Version bumped from `1.4.0-dev` to `1.4.0`
 
 ## [1.3.0] — 2026-05-18
 
