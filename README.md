@@ -11,6 +11,8 @@
 
 > **🤖 Bot Self-Install** — Say: *"Read AGENTS.md and follow the installation instructions"*
 
+> **⭐ If this project helps your agent remember — [star the repo](https://github.com/Neboy72/hermes-nexus-memory) so others find it too. Takes 2 seconds.**
+
 
 
 Your agent forgets everything after each session. **Nexus fixes that.**
