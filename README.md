@@ -276,12 +276,12 @@ One plugin. Three backends. Same tools, same API, same results.
 | | agentmemory | Holographic | Mem0 / Honcho | **Nexus** 🏆 |
 |---|---|---|---|---|
 | Semantic search | ✅ (Gemini API) | ❌ Hash-based | ✅ (Cloud API) | ✅ (local or cloud) |
-|| **Hybrid retrieval** | ❌ | ❌ | ❌ | **✅ BM25 + Vector + RRF** |
-|| **Drift detection** | ❌ | ❌ | ❌ | **✅ Scored 0–10** |
-|| **Anti-poisoning** | ❌ | ❌ | ❌ | **✅ Source tiers** |
-|| 🔗 **Multi-Level Provenance** | ❌ | ❌ | ❌ | **✅ Source + Corroboration + Dependency Graph** |
-|| 🗣️ **Authority Chain** | ❌ | ❌ | ❌ | **✅ 6-level priority resolution** |
-|| 🔧 **Auto-Fix / Consolidation** | ❌ | ❌ | ❌ | **✅ `nexus_consolidate()`** |
+| **Hybrid retrieval** | ❌ | ❌ | ❌ | **✅ BM25 + Vector + RRF** |
+| **Drift detection** | ❌ | ❌ | ❌ | **✅ Scored 0–10** |
+| **Anti-poisoning** | ❌ | ❌ | ❌ | **✅ Source tiers** |
+| 🔗 **Multi-Level Provenance** | ❌ | ❌ | ❌ | **✅ Source + Corroboration + Dependency Graph** |
+| 🗣️ **Authority Chain** | ❌ | ❌ | ❌ | **✅ 6-level priority resolution** |
+| 🔧 **Auto-Fix / Consolidation** | ❌ | ❌ | ❌ | **✅ `nexus_consolidate()`** |
 | External APIs | Gemini required | None | Multiple cloud APIs | **Optional** |
 | Code size | ~50K TypeScript | ~1.5K Python | Varies | **~800 Python** |
 | Setup time | 30+ min + OAuth | `hermes memory setup` | Cloud account | **1 command** |
