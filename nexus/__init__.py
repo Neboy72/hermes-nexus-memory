@@ -12,8 +12,17 @@ from typing import Any
 
 from nexus.health import DriftDetector, DriftReport
 from nexus.retrieval import HybridRetriever
+from nexus.provenance import (
+    attach_source,
+    find_corroboration,
+    corroborate_entry,
+    add_dependency,
+    build_dependency_graph,
+    format_source,
+    SOURCE_TYPES,
+)
 
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 
 _logger = logging.getLogger(__name__)
 
@@ -25,6 +34,7 @@ def nexus_update(
     point_id: str,
     new_content: str | None = None,
     new_metadata: dict | None = None,
+    modified_by: str | None = None,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
     collection_name: str = "hermes-memory",
@@ -34,10 +44,14 @@ def nexus_update(
     Unlike forget + remember, this preserves all existing metadata (category,
     source_tier, timestamps, etc.) and only overwrites the fields you specify.
 
+    Automatically tracks ``modified_at`` and ``modified_by`` in the
+    provenance dict (Level 3 — Bi-temporal modification tracking).
+
     Args:
         point_id: The Qdrant point ID to update.
         new_content: New content text (None = keep existing).
         new_metadata: Dict of metadata fields to merge/update (None = keep existing).
+        modified_by: Who made this modification (e.g. "Kiosha", "Miosha", "Nebo").
         qdrant_host: Qdrant host.
         qdrant_port: Qdrant port.
         collection_name: Qdrant collection name.
@@ -82,6 +96,27 @@ def nexus_update(
     if new_metadata:
         payload.update(new_metadata)
 
+    # Update provenance modification tracking (Level 3)
+    now_iso = datetime.now().isoformat()
+    prov = payload.get("provenance")
+    if prov is None:
+        # Legacy entry — create basic provenance
+        prov = {
+            "source": {"source_type": "manual", "created_by": "System", "timestamp": now_iso},
+            "corroborated_by": [],
+            "confidence": 0.7,
+            "modified_at": now_iso,
+            "modified_by": modified_by or "System",
+            "depends_on": [],
+            "dependents": [],
+            "grounded": True,
+        }
+        payload["provenance"] = prov
+    else:
+        prov["modified_at"] = now_iso
+        if modified_by:
+            prov["modified_by"] = modified_by
+
     # Override point with merged payload
     update_url = f"http://{qdrant_host}:{qdrant_port}/collections/{collection_name}/points"
     update_data = {
@@ -111,22 +146,34 @@ def nexus_remember(
     category: str = "fact",
     metadata: dict | None = None,
     valid_from: str | None = None,
+    provenance: dict | None = None,
+    created_by: str = "System",
+    session_id: str | None = None,
+    source_type: str = "chat",
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
     collection_name: str = "hermes-memory",
     **kwargs: Any,
 ) -> dict:
-    """Store a new memory with bi-temporal metadata.
+    """Store a new memory with bi-temporal metadata and optional provenance.
 
     Automatically sets ``valid_from`` to today if not provided.  Pass
     ``valid_until`` inside *metadata* (or via keyword) for expiry-aware
     storage.
+
+    If *provenance* is not provided, one is auto-built from *created_by*,
+    *session_id*, and *source_type* (Level 1 — Source).  Pass an explicit
+    ``provenance`` dict to override (Level 2-4 fields).
 
     Args:
         content: The memory content text.
         category: Category tag (default ``"fact"``).
         metadata: Additional metadata dict to merge.
         valid_from: ISO-8601 date string. Defaults to today if omitted.
+        provenance: Full provenance dict. If None, auto-built from args.
+        created_by: Who created this fact (used for auto-provenance).
+        session_id: Hermes session ID (used for auto-provenance).
+        source_type: Source type hint (used for auto-provenance).
         qdrant_host: Qdrant host.
         qdrant_port: Qdrant port.
         collection_name: Qdrant collection name.
@@ -140,6 +187,7 @@ def nexus_remember(
         ConnectionError: If Qdrant is unreachable.
     """
     import requests as _req
+    from nexus.provenance import attach_source
 
     # Build payload
     payload: dict[str, Any] = {
@@ -157,13 +205,30 @@ def nexus_remember(
     if payload.get("valid_from") is None:
         payload["valid_from"] = _today_iso()
 
+    # Attach provenance (Level 1 — Source)
+    if provenance is not None:
+        payload["provenance"] = provenance
+    elif "provenance" not in payload:
+        payload["provenance"] = attach_source(
+            session_id=session_id,
+            source_type=source_type,
+            created_by=created_by,
+            content=content,
+        )
+
     # Build vector (empty — Qdrant will fail if no vector; caller
     # is expected to have set up an auto-embedding pipeline, or
     # embed beforehand and pass via ``vector`` kwarg).
     vector = payload.pop("vector", None) or []
 
+    # Ensure point has a valid ID (UUID or integer)
+    point_id = payload.pop("id", None)
+    if point_id is None:
+        import uuid
+        point_id = str(uuid.uuid4())
+
     url = f"http://{qdrant_host}:{qdrant_port}/collections/{collection_name}/points"
-    data = {"points": [{"id": payload.pop("id", None), "vector": vector, "payload": payload}]}
+    data = {"points": [{"id": point_id, "vector": vector, "payload": payload}]}
     r = _req.put(url, json=data, timeout=10)
     return r.json()
 

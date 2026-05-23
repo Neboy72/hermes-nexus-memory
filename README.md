@@ -1,13 +1,17 @@
-# Hermes Nexus Memory 🧠
+# Hermes Nexus Memory 🧠 🤖
 
+![Bot Self-Install](https://img.shields.io/badge/bot--self--install-brightgreen?style=flat-square)
 ![GitHub Stars](https://img.shields.io/github/stars/Neboy72/hermes-nexus-memory?style=flat-square&logo=github)
 ![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)
 ![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)
-![Version](https://img.shields.io/badge/version-1.3.0-green?style=flat-square)
-![Bot Self-Install](https://img.shields.io/badge/bot-self--install-brightgreen?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.4.0-green?style=flat-square)
 
-> **Production-grade vector memory for AI agents — hybrid retrieval, drift detection, RAG poisoning defense. 🤖 Bot self-installs.**
+> **Production-grade vector memory for AI agents — hybrid retrieval, drift detection, multi-level provenance, RAG poisoning defense.**
+
+> **🤖 Bot Self-Install** — Say: *"Read AGENTS.md and follow the installation instructions"*
+
+
 
 Your agent forgets everything after each session. **Nexus fixes that.**
 
@@ -17,7 +21,16 @@ Semantic search over facts, decisions, and patterns. Persists across restarts. N
 
 ## What's New
 
-### v1.3.0
+### v1.4.0
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 📜 **Multi-Level Provenance** | Tracks where every fact comes from (source, corroboration, dependencies) | Know *why* your agent trusts a memory — confidence scores, cross-references, dependency graphs |
+| 🔗 **Level 1: Source** | `attach_source()` + auto-tracking in `nexus_remember()` | "This fact came from Kiosha's chat session on May 23" |
+| 🤝 **Level 2: Corroboration** | `find_corroboration()` + `corroborate_entry()` | "This fact is confirmed by 3 other entries" — automatic confidence recalibration |
+| 🕐 **Level 3: Bi-temporal (extended)** | `modified_at`/`modified_by` in `nexus_update()` | Track who changed what and when |
+| 🕸️ **Level 4: Dependency Graph** | `build_dependency_graph()` with `depends_on`/`dependents` | "If this fact is wrong, 5 other entries break" — criticality scoring |
+| 🆔 **Auto-UUID** | `nexus_remember()` generates valid Point IDs | No more "value Unit is not a valid point ID" errors |
 
 | Feature | What it does | Why it matters |
 |---------|-------------|---------------|

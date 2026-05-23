@@ -1,5 +1,44 @@
 # Changelog
 
+## [1.4.0] — 2026-05-23
+
+### Added
+
+- **Multi-Level Provenance** — Vier Ebenen von Provenance für jeden Memory-Eintrag:
+
+  **Level 1 — Source:** Automatisches Tracking woher ein Fakt kommt.
+  - `attach_source(session_id, source_type, created_by)` — baut Provenance-Metadaten
+  - `format_source(provenance)` — menschenlesbare Anzeige: "🟢 Chat by Kiosha (2026-05-23)"
+  - `SOURCE_TYPES` — Vertrauens-Ranking: chat (1.0) > ingest (0.9) > cron (0.8) > manual (0.7) > inferred (0.5) > unknown (0.3)
+  - Neue Parameter für `nexus_remember()`: `provenance`, `created_by`, `session_id`, `source_type`
+  - Legacy-Einträge ohne Provenance bleiben lesbar (`format_source(None)` → `❓ Unknown origin`)
+
+  **Level 2 — Corroboration:** Welche Einträge bestätigen oder widersprechen sich.
+  - `find_corroboration(content)` — Keyword-Overlap-Suche nach bestätigenden Einträgen
+  - `corroborate_entry(id_a, id_b)` — bidirektionales Verlinken + Confidence-Rekalibrierung
+
+  **Level 3 — Bi-temporal (erweitert):** Zusätzlich zu `valid_from`/`valid_until`:
+  - `modified_at` / `modified_by` — automatisch gesetzt bei jedem `nexus_update()` (Level 3)
+  - `nexus_update()` neuer Parameter: `modified_by`
+  - Legacy-Einträge bekommen beim ersten Update automatisch Basisdaten
+
+  **Level 4 — Dependency Graph:** Was bricht wenn dieser Fakt falsch ist.
+  - `build_dependency_graph(point_id)` — rekursive Traversierung von `depends_on`/`dependents`
+  - `depends_on` / `dependents` — Listen von Point-IDs
+  - `criticality` — Anzahl der Einträge die von diesem Fakt abhängen
+  - `grounded` — Boolean: direkt beobachtet (True) oder abgeleitet (False)
+  - `max_depth=3` Schutz vor Endlos-Rekursion
+
+- **Neues Modul:** `nexus/provenance/__init__.py` — 14 KB, vollständige Typannotationen
+
+- **UUID-Auto-Generierung** — `nexus_remember()` erzeugt automatisch eine UUID wenn keine Point-ID übergeben wird (fix für Qdrant's `null`-ID-Ablehnung)
+
+### Changed
+
+- `nexus_remember()` erweiterte Signatur: `provenance`, `created_by`, `session_id`, `source_type`
+- `nexus_update()` erweiterte Signatur: `modified_by`
+- Version: `1.4.0-dev` (Entwicklungsstand, vor Release-Migration zu `1.4.0`)
+
 ## [1.3.0] — 2026-05-18
 
 ### Added
