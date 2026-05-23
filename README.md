@@ -24,6 +24,16 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 
 ## What's New
 
+### v1.5.0
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 🗣️ **Authority Chain** | 6-level priority: direct > policy > recent > sourced > vague > compressed | Resolves conflicting facts automatically — knows which one to trust |
+| 🔬 **`resolve_authority(facts)`** | Picks the highest-authority fact from a list | One call, no manual ranking |
+| ⚖️ **`nexus_resolve_conflict(facts)`** | Returns winner + runner-up + reasoning | Full transparency on tiebreak decisions |
+| 🕐 **Timestamp Tiebreaker** | Among equal authorities, newer fact wins | "Direct instruction now" beats "policy from yesterday" |
+| 🤖 **Auto-Detection** | Reads authority level from category, source, and content | Zero config — works out of the box |
+
 ### v1.4.0
 
 | Feature | What it does | Why it matters |
@@ -34,6 +44,8 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 | 🕐 **Level 3: Bi-temporal (extended)** | `modified_at`/`modified_by` in `nexus_update()` | Track who changed what and when |
 | 🕸️ **Level 4: Dependency Graph** | `build_dependency_graph()` with `depends_on`/`dependents` | "If this fact is wrong, 5 other entries break" — criticality scoring |
 | 🆔 **Auto-UUID** | `nexus_remember()` generates valid Point IDs | No more "value Unit is not a valid point ID" errors |
+
+### v1.3.0
 
 | Feature | What it does | Why it matters |
 |---------|-------------|---------------|
