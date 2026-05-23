@@ -1,23 +1,24 @@
-# Hermes Nexus Memory 🧠 🤖
+# Hermes Nexus Memory 🧠
 
-![Bot Self-Install](https://img.shields.io/badge/bot--self--install-brightgreen?style=flat-square)
-![GitHub Stars](https://img.shields.io/github/stars/Neboy72/hermes-nexus-memory?style=flat-square&logo=github)
-![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)
-![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)
-![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)
-![Version](https://img.shields.io/badge/version-1.5.0-green?style=flat-square)
+> **One prompt — your bot never forgets again.**
 
-> **Production-grade vector memory for AI agents — hybrid retrieval, drift detection, multi-level provenance, RAG poisoning defense.**
+You talk to your bot. Next day it asks you the same thing.  
+Nexus Memory fixes that. **Permanently.**
 
-> **🤖 Bot Self-Install** — Say: *"Read AGENTS.md and follow the installation instructions"*
+[![Bot Self-Install](https://img.shields.io/badge/bot--self--install-brightgreen?style=flat-square)](AGENTS.md)
+[![GitHub Stars](https://img.shields.io/github/stars/Neboy72/hermes-nexus-memory?style=flat-square&logo=github)](https://github.com/Neboy72/hermes-nexus-memory)
+[![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
+[![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
+[![Version](https://img.shields.io/badge/version-1.5.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
-> **⭐ If this project helps your agent remember — [star the repo](https://github.com/Neboy72/hermes-nexus-memory) so others find it too. Takes 2 seconds.**
+> **Bot Self-Install:** Tell your AI: *"Read AGENTS.md and install Nexus Memory."* It does the rest.
 
+Your agent remembers across sessions — facts, decisions, patterns.  
+Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stale memories automatically.  
+**No nonsense. No bloat. Just memory that works.**
 
-
-Your agent forgets everything after each session. **Nexus fixes that.**
-
-Semantic search over facts, decisions, and patterns. Persists across restarts. Now with **Hybrid Retrieval** (BM25 + Vector + RRF) against poisoning, and **Belief Drift Detection** against stale memories.
+[![Star the repo](https://img.shields.io/badge/⭐-Star%20on%20GitHub-gold?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory)
 
 ---
 
