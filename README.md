@@ -315,6 +315,8 @@ One plugin. Three backends. Same tools, same API, same results.
 
 MIT — use it, modify it, ship it.
 
+[comment]: <> (last refreshed 2026-05-23)
+
 ---
 
 <sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.5.0 — Authority Chain</sub>
