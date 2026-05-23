@@ -546,6 +546,177 @@ def nexus_query_valid(
     return valid
 
 
+# ── Authority Chain Resolution (v1.5) ────────────────────────────────────
+
+
+AUTHORITY_CHAIN = [
+    (1, "direct_instruction", "Direct instruction — user said it now"),
+    (2, "canonical_policy", "Canonical policy — AGENTS.md, Skills, Rules"),
+    (3, "project_decision", "Recent project decision — latest memory entry"),
+    (4, "long_term_memory", "Long-term memory with source attribution"),
+    (5, "retrieval_summary", "Retrieval summary — hybrid search result"),
+    (6, "compressed_summary", "Compressed summary — lowest trust"),
+]
+
+
+def _resolve_authority_level(payload: dict) -> int:
+    """Determine the authority level (1=highest, 6=lowest) for a memory entry.
+
+    Uses provenance data if available:
+    - ``source_type == "direct"`` or category ``instruction`` → 1
+    - Category ``policy`` or ``rule`` → 2
+    - Recent ``decision`` (source_type == "chat", <7 days) → 3
+    - Has provenance with source → 4
+    - Has provenance without source → 5
+    - No provenance → 6
+
+    Falls back to content and category heuristics.
+    """
+    prov = payload.get("provenance", {})
+    source = prov.get("source", {})
+    source_type = source.get("source_type", payload.get("source_type", ""))
+    category = payload.get("category", "")
+    content = payload.get("content", "")
+
+    # Level 1: Direct instruction
+    if source_type == "direct" or category == "instruction":
+        return 1
+
+    # Level 2: Canonical policy
+    if category in ("policy", "rule", "canonical"):
+        return 2
+    content_lower = content.lower() if content else ""
+    if any(kw in content_lower for kw in ("agentes.md", "skill.md", "canonical", "rule")):
+        return 2
+
+    # Level 3: Recent project decision (chat, <7 days)
+    if source_type == "chat" and category == "decision":
+        ts = source.get("timestamp", payload.get("timestamp", ""))
+        if ts:
+            from datetime import datetime as dt
+            try:
+                entry_time = dt.fromisoformat(ts)
+                age = (datetime.now() - entry_time).days
+                if age < 7:
+                    return 3
+            except (ValueError, TypeError):
+                pass
+
+    # Level 4: Has provenance with source attribution
+    if prov and source.get("source_type") and source.get("created_by"):
+        return 4
+
+    # Level 5: Has provenance but no clear source
+    if prov:
+        return 5
+
+    # Level 6: No provenance at all
+    return 6
+
+
+def resolve_authority(
+    facts: list[dict],
+    prefer_recent: bool = True,
+) -> dict:
+    """Resolve conflicting facts by authority chain.
+
+    Given a list of fact payloads (from nexus_search, contradiction detection,
+    or manual lookup), returns the most authoritative one.
+
+    The authority chain (1=highest, 6=lowest):
+        1. direct_instruction
+        2. canonical_policy
+        3. project_decision
+        4. long_term_memory
+        5. retrieval_summary
+        6. compressed_summary
+
+    Args:
+        facts: List of payload dicts (each must have at least ``content``).
+        prefer_recent: If True, among equal authority levels, picks the
+                       newer entry by timestamp (default True).
+
+    Returns:
+        The winning payload dict with ``_authority_level`` and
+        ``_authority_reason`` added.
+    """
+    if not facts:
+        return {"content": "", "_authority_level": 0, "_authority_reason": "No facts"}
+
+    scored = []
+    for f in facts:
+        level = _resolve_authority_level(f)
+        ts = f.get("timestamp", f.get("provenance", {}).get("source", {}).get("timestamp", ""))
+        scored.append((level, ts, f))
+
+    # Sort: lowest level number = highest authority
+    # If same level and prefer_recent: newer timestamp wins
+    if prefer_recent:
+        # Stabil sort: erst nach Timestamp absteigend (neuste zuerst)
+        # dann nach Level aufsteigend (stabil → gleiches Level behält Timestamp-Ordnung)
+        scored.sort(key=lambda x: x[1] if x[1] else "", reverse=True)
+        scored.sort(key=lambda x: x[0])
+    else:
+        scored.sort(key=lambda x: x[0])
+
+    winner = dict(scored[0][2])
+    winner["_authority_level"] = scored[0][0]
+    level_lookup = {k: v for k, _, v in AUTHORITY_CHAIN}
+    level_name = level_lookup.get(scored[0][0], "unknown")
+    winner["_authority_reason"] = (
+        f"Wins by authority level {scored[0][0]} ({level_name})"
+    )
+
+    return winner
+
+
+def nexus_resolve_conflict(
+    facts: list[dict],
+    prefer_recent: bool = True,
+) -> dict:
+    """High-level conflict resolver for two or more conflicting memories.
+
+    Wraps :func:`resolve_authority` with a user-friendly result.
+
+    Args:
+        facts: List of payload dicts (at least 2 to resolve).
+        prefer_recent: Prefer newer entry at same authority level.
+
+    Returns:
+        Dict with winner, runner_up, authority_reason.
+
+    Example::
+
+        >>> nexus_resolve_conflict([fact_a, fact_b])
+        {
+            "winner": {"content": "Use Flash for routine", ...},
+            "runner_up": {"content": "Use Pro for everything", ...},
+            "authority_reason": "Wins by authority level 3 (project_decision)",
+            "resolved": True,
+        }
+    """
+    if len(facts) < 1:
+        return {"resolved": False, "error": "Need at least 1 fact"}
+
+    if len(facts) == 1:
+        winner = dict(facts[0])
+        winner["_authority_level"] = _resolve_authority_level(facts[0])
+        return {"winner": winner, "runner_up": None,
+                "authority_reason": "Single fact — no conflict to resolve",
+                "resolved": True}
+
+    winner = resolve_authority(facts, prefer_recent=prefer_recent)
+    runners = [f for f in facts if f.get("content") != winner.get("content")]
+    runner_up = runners[0] if runners else None
+
+    return {
+        "winner": winner,
+        "runner_up": runner_up,
+        "authority_reason": winner.get("_authority_reason", ""),
+        "resolved": True,
+    }
+
+
 __all__ = [
     "HybridRetriever",
     "DriftDetector",
@@ -554,4 +725,7 @@ __all__ = [
     "nexus_remember",
     "nexus_consolidate",
     "nexus_query_valid",
+    "nexus_resolve_conflict",
+    "resolve_authority",
+    "AUTHORITY_CHAIN",
 ]
