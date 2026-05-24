@@ -25,6 +25,10 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 
 ---
 
+[![Architecture](docs/images/architecture.png)](docs/images/architecture.png)
+
+---
+
 ## What's New
 
 ### v1.6.1
