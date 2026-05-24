@@ -291,8 +291,8 @@ One plugin. Three backends. Same tools, same API, same results.
 | **Drift detection** | ❌ | ❌ | ❌ | **✅ Scored 0–10** |
 | **Anti-poisoning** | ❌ | ❌ | ❌ | **✅ Source tiers** |
 | 🔗 **Multi-Level Provenance** | ❌ | ❌ | ❌ | **✅ Source + Corroboration + Dependency Graph** |
-|| 🗣️ **Authority Chain** | ❌ | ❌ | ❌ | **✅ 6-level priority resolution** |
-|| ✅ **RAG Confidence Scoring** | ❌ | ❌ | ❌ | **✅ 5-signal evaluation** |
+| 🗣️ **Authority Chain** | ❌ | ❌ | ❌ | **✅ 6-level priority resolution** |
+| ✅ **RAG Confidence Scoring** | ❌ | ❌ | ❌ | **✅ 5-signal evaluation** |
 | 🔧 **Auto-Fix / Consolidation** | ❌ | ❌ | ❌ | **✅ `nexus_consolidate()`** |
 | External APIs | Gemini required | None | Multiple cloud APIs | **Optional** |
 | Code size | ~50K TypeScript | ~1.5K Python | Varies | **~2.2K Python** |
