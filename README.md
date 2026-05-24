@@ -10,7 +10,7 @@ Nexus Memory fixes that. **Permanently.**
 [![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
-[![Version](https://img.shields.io/badge/version-1.6.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
+[![Version](https://img.shields.io/badge/version-1.6.1-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
 > ⭐ **If this project helps your agent remember — drop a star so others find it too. Takes 2 seconds.**
 
