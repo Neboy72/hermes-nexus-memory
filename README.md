@@ -267,12 +267,6 @@ One plugin. Three backends. Same tools, same API, same results.
 
 ---
 
-## Architecture
-
-![Architecture](docs/images/architecture.png)
-
----
-
 ## vs Other Memory Plugins
 
 | | agentmemory | Holographic | Mem0 / Honcho | **Nexus** 🏆 |
