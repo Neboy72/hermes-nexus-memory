@@ -100,7 +100,7 @@ def _print_pretty(report):
         label = "🔴 Sehr niedrig"
 
     print(f"\n{'═'*50}")
-    print(f"  Confidence: {label}")
+    print(f"  Grounding: {label}")
     print(f"  Score:      {report.confidence:.1%}")
     print(f"{'═'*50}")
     print(f"  📊 Signale:")

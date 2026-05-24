@@ -31,8 +31,8 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 
 | Feature | What it does | Why it matters |
 |---------|-------------|---------------|
-| ✅ **RAG Confidence Scoring** | 5-signal evaluation: similarity, dominance, grounding, factual overlap, coverage | Know *how reliable* an answer really is — 🟢 Very High → ⛔ Very Low |
-| 🧩 **Confidence CLI** | `bin/nexus-confidence --pretty "query" "answer"` | Test confidence of any RAG response in seconds |
+| ✅ **RAG Grounding Scoring** | 5-signal evaluation: similarity, dominance, grounding, factual overlap, coverage | Know *how reliable* an answer really is — 🟢 Very High → ⛔ Very Low |
+| 🧩 **Grounding CLI** | `bin/nexus-confidence --pretty "query" "answer"` | Test confidence of any RAG response in seconds |
 | 🎯 **3-Provider Embedding** | Confidence Scorer uses the same provider as your system (voyage/sentence-transformers/ollama) | No dimension mismatch — works with any configuration |
 | 🧹 **Retrieval Filter** | `search_vector()` filters on `type: memory` — no more session turns in results | Clean results, only facts, no chat history noise |
 
@@ -264,7 +264,7 @@ One plugin. Three backends. Same tools, same API, same results.
 │  Core ──────────── Semantic vector search (Qdrant)           │
 │  Retrieval ─────── Hybrid BM25 + Vector + RRF + Tier Boost   │
 │  Health ────────── Belief Drift Detection (0–10 scoring)     │
-│  Confidence ────── RAG Confidence Scoring (5-Signal)         │
+│  Confidence ────── RAG Grounding Scoring (5-Signal)         │
 │                                                              │
 │         ┌──────────────┐     ┌─────────────────────┐        │
 │         │   Qdrant     │     │  Embedding Provider  │        │
@@ -292,7 +292,7 @@ One plugin. Three backends. Same tools, same API, same results.
 | **Anti-poisoning** | ❌ | ❌ | ❌ | **✅ Source tiers** |
 | 🔗 **Multi-Level Provenance** | ❌ | ❌ | ❌ | **✅ Source + Corroboration + Dependency Graph** |
 | 🗣️ **Authority Chain** | ❌ | ❌ | ❌ | **✅ 6-level priority resolution** |
-| ✅ **RAG Confidence Scoring** | ❌ | ❌ | ❌ | **✅ 5-signal evaluation** |
+| ✅ **RAG Grounding Scoring** | ❌ | ❌ | ❌ | **✅ 5-signal evaluation** |
 | 🔧 **Auto-Fix / Consolidation** | ❌ | ❌ | ❌ | **✅ `nexus_consolidate()`** |
 | External APIs | Gemini required | None | Multiple cloud APIs | **Optional** |
 | Code size | ~50K TypeScript | ~1.5K Python | Varies | **~2.2K Python** |
@@ -334,4 +334,4 @@ MIT — use it, modify it, ship it.
 
 ---
 
-<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.6.0 — Confidence Scoring</sub>
+<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.6.0 — Grounding Scoring</sub>

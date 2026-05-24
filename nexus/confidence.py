@@ -1,4 +1,4 @@
-"""Confidence Scoring for RAG — 4-Signal-Methode.
+"""Grounding Scoring for RAG — 4-Signal-Methode.
 
 Bewertet wie vertrauenswürdig eine generierte Antwort basierend auf
 den retrieved Chunks ist. Ändert nichts an der bestehenden Pipeline.
@@ -228,7 +228,7 @@ class ConfidenceScorer:
         answer: str,
         chunks: Optional[list[dict]] = None,
     ) -> ConfidenceReport:
-        """Vollständige Confidence-Bewertung.
+        """Vollständige Grounding-Bewertung.
 
         Args:
             query: Die ursprüngliche User-Frage.
@@ -293,7 +293,7 @@ class ConfidenceScorer:
 
         report.signals = signals
 
-        # Schritt 5: Gesamt-Confidence + Label
+        # Schritt 5: Gesamt-Grounding + Label
         report.confidence = self._aggregate(signals)
         report.chunk_count = len(chunks)
         report.label = self._label(report.confidence)
@@ -451,7 +451,7 @@ class ConfidenceScorer:
 
     @staticmethod
     def _aggregate(signals: SignalScores) -> float:
-        """Berechne Gesamt-Confidence aus den 5 Einzelsignalen.
+        """Berechne Gesamt-Grounding aus den 5 Einzelsignalen.
 
         Gewichtung:
         - similarity:  25% (Query-Chunk Fit)

@@ -4,21 +4,21 @@
 
 ### Added
 
-- **RAG Confidence Scoring** — `nexus/confidence.py` evaluates generated answers with 5 signals:
+- **RAG Grounding Scoring** — `nexus/confidence.py` evaluates generated answers with 5 signals:
   - `similarity` — Query-Chunk similarity (cosine max)
   - `dominance` — Top-chunk concentration (stability)
   - `grounding` — Semantic overlap between answer and chunks
   - `factual` — Word-level overlap (hallucination guard)
   - `coverage` — How broadly chunks cover the question
   - Aggregated to a single confidence label (🟢 Very High → ⛔ Very Low)
-- **Confidence CLI** — `bin/nexus-confidence --pretty "query" "answer"` for testing
+- **Grounding CLI** — `bin/nexus-confidence --pretty "query" "answer"` for testing
 - **3-Provider Embedding** — Confidence Scorer supports voyage, sentence-transformers, ollama (same provider as system config)
 
 ### Changed
 
 - `nexus/retrieval/__init__.py` — `search_vector()` now uses the correct `/points/search` endpoint
 - `nexus/retrieval/__init__.py` — `search_vector()` now filters on `type: memory` (no more session turns)
-- README updated with Confidence Scoring section (tools, architecture, comparison table)
+- README updated with Grounding Scoring section (tools, architecture, comparison table)
 
 ### Fixed
 
