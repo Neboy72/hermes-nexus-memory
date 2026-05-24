@@ -27,6 +27,14 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 
 ## What's New
 
+### v1.6.1
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| ⚓ **Grounding Rebranding** | `ConfidenceScorer` → `GroundingScorer`, labels now say "Grounding" not "Confidence" | Measures *source grounding*, not model confidence — honest naming |
+| 🏷️ **Named Entity Matching** | Factual signal uses 48 tech entities (Nexus, Qdrant, Voyage, BM25, GPT…) | Precision hallucination detection — catches missing facts, not just words |
+| 💡 **Why-Hints** | `--pretty` output explains *why* each signal scored low/high | "Query barely fits the chunks" > raw "Similarity: 54%" |
+
 ### v1.6.0
 
 | Feature | What it does | Why it matters |
