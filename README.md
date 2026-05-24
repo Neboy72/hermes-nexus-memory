@@ -265,28 +265,7 @@ One plugin. Three backends. Same tools, same API, same results.
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                       NEXUS MEMORY v1.6                       │
-│                                                              │
-│  Core ──────────── Semantic vector search (Qdrant)           │
-│  Retrieval ─────── Hybrid BM25 + Vector + RRF + Tier Boost   │
-│  Health ────────── Belief Drift Detection (0–10 scoring)     │
-│  Grounding ─────── RAG Grounding Scoring (5-Signal)         │
-│                                                              │
-│         ┌──────────────┐     ┌─────────────────────┐        │
-│         │   Qdrant     │     │  Embedding Provider  │        │
-│         │ localhost:   │◄────│  (3 to choose from)  │        │
-│         │ 6333        │     └─────────────────────┘        │
-│         └──────┬───────┘                                     │
-│                │                                              │
-│   ┌────────────┴────────────────────────┐                   │
-│   │  NexusMemoryProvider (~400 LOC)     │                   │
-│   │  + HybridRetriever  (~250 LOC)      │                   │
-│   │  + DriftDetector    (~150 LOC)      │                   │
-│   └─────────────────────────────────────┘                   │
-└──────────────────────────────────────────────────────────────┘
-```
+![Architecture](docs/images/architecture.png)
 
 ---
 
