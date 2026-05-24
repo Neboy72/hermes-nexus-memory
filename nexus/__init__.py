@@ -22,7 +22,7 @@ from nexus.provenance import (
     SOURCE_TYPES,
 )
 
-__version__ = "1.5.0"
+__version__ = "1.6.0"
 
 _logger = logging.getLogger(__name__)
 

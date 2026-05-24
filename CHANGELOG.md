@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.6.0] — 2026-05-24
+
+### Added
+
+- **RAG Confidence Scoring** — `nexus/confidence.py` bewertet generierte Antworten mit 5 Signalen:
+  - `similarity` — Query-Chunk Ähnlichkeit (cosine max)
+  - `dominance` — Konzentration auf Top-Chunk (Stabilität)
+  - `grounding` — Semantische Überlappung Antwort ↔ Chunks
+  - `factual` — Wörtlicher Wort-Overlap (Halluzinations-Schutz)
+  - `coverage` — Wie breit decken Chunks die Frage ab?
+  - Aggregation zu Gesamt-Confidence mit Label (🟢 Sehr hoch → ⛔ Sehr niedrig)
+- **Confidence CLI** — `bin/nexus-confidence --pretty "query" "answer"` für Tests
+- **3-Provider Embedding** — Confidence Scorer unterstützt voyage, sentence-transformers, ollama (gleicher Provider wie System-Konfiguration)
+
+### Changed
+
+- `nexus/retrieval/__init__.py` — `search_vector()` nutzt korrekten `/points/search` Endpoint
+- `nexus/retrieval/__init__.py` — `search_vector()` filtert jetzt auf `type: memory` (keine Session-Turns mehr)
+- README um Confidence Scoring ergänzt (Tools, Architektur, Vergleichstabelle)
+
+### Fixed
+
+- **Qdrant API-Endpoint** — Falsche URL `/collections/{name}/search` → korrekt `/collections/{name}/points/search` (galt für v1.4.0–v1.5.0)
+- **Session-Turn Rauschen** — Suchergebnisse enthielten zu 89% Chat-Verläufe statt Memory-Einträge — jetzt gefiltert auf `type: "memory"`
+
 ## [1.4.0] — 2026-05-23
 
 ### Added

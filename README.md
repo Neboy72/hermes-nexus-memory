@@ -10,7 +10,7 @@ Nexus Memory fixes that. **Permanently.**
 [![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
-[![Version](https://img.shields.io/badge/version-1.5.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
+[![Version](https://img.shields.io/badge/version-1.6.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
 > ⭐ **If this project helps your agent remember — drop a star so others find it too. Takes 2 seconds.**
 
@@ -26,6 +26,15 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 ---
 
 ## What's New
+
+### v1.6.0
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| ✅ **RAG Confidence Scoring** | 5-signal evaluation: similarity, dominance, grounding, factual overlap, coverage | Know *how reliable* an answer really is — 🟢 Sehr hoch → ⛔ Sehr niedrig |
+| 🧩 **Confidence CLI** | `bin/nexus-confidence --pretty "query" "answer"` | Test confidence of any RAG response in seconds |
+| 🎯 **3-Provider Embedding** | Confidence Scorer nutzt den gleichen Provider wie dein System (voyage/sentence-transformers/ollama) | Kein Dimension-Mismatch — funktioniert mit jeder Konfiguration |
+| 🧹 **Retrieval Filter** | `search_vector()` filtert auf `type: memory` — keine Session-Turns mehr in Suchergebnissen | Saubere Treffer, nur Fakten, kein Chat-Verlauf-Rauschen |
 
 ### v1.5.0
 
@@ -122,6 +131,7 @@ That's it. Hybrid search activates automatically when `bm25s` is installed.
 | `nexus_search(query, limit=5)` | Hybrid search — BM25 + vector + RRF fusion |
 | `nexus_remember(content, category, source)` | Save facts, decisions, preferences, patterns |
 | `nexus_forget(memory_id)` | Remove a specific memory |
+| `nexus_confidence(query, answer)` | Confidence scoring — how reliable is this RAG response? |
 
 **Saved once → persists across sessions, model switches, and gateway restarts.**
 
@@ -249,11 +259,12 @@ One plugin. Three backends. Same tools, same API, same results.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                       NEXUS MEMORY v1.5                       │
+│                       NEXUS MEMORY v1.6                       │
 │                                                              │
 │  Core ──────────── Semantic vector search (Qdrant)           │
 │  Retrieval ─────── Hybrid BM25 + Vector + RRF + Tier Boost   │
 │  Health ────────── Belief Drift Detection (0–10 scoring)     │
+│  Confidence ────── RAG Confidence Scoring (5-Signal)         │
 │                                                              │
 │         ┌──────────────┐     ┌─────────────────────┐        │
 │         │   Qdrant     │     │  Embedding Provider  │        │
@@ -280,7 +291,8 @@ One plugin. Three backends. Same tools, same API, same results.
 | **Drift detection** | ❌ | ❌ | ❌ | **✅ Scored 0–10** |
 | **Anti-poisoning** | ❌ | ❌ | ❌ | **✅ Source tiers** |
 | 🔗 **Multi-Level Provenance** | ❌ | ❌ | ❌ | **✅ Source + Corroboration + Dependency Graph** |
-| 🗣️ **Authority Chain** | ❌ | ❌ | ❌ | **✅ 6-level priority resolution** |
+|| 🗣️ **Authority Chain** | ❌ | ❌ | ❌ | **✅ 6-level priority resolution** |
+|| ✅ **RAG Confidence Scoring** | ❌ | ❌ | ❌ | **✅ 5-signal evaluation** |
 | 🔧 **Auto-Fix / Consolidation** | ❌ | ❌ | ❌ | **✅ `nexus_consolidate()`** |
 | External APIs | Gemini required | None | Multiple cloud APIs | **Optional** |
 | Code size | ~50K TypeScript | ~1.5K Python | Varies | **~2.2K Python** |
@@ -318,8 +330,8 @@ One plugin. Three backends. Same tools, same API, same results.
 
 MIT — use it, modify it, ship it.
 
-[comment]: <> (last refreshed 2026-05-23)
+[comment]: <> (last refreshed 2026-05-24)
 
 ---
 
-<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.5.0 — Authority Chain</sub>
+<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.6.0 — Confidence Scoring</sub>

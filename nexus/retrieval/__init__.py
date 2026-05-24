@@ -259,24 +259,37 @@ class HybridRetriever:
         """Vector search via Qdrant (you provide the embedding).
 
         For production use, pass the query embedding from your provider.
+        Only returns entries with ``type: "memory"`` to filter out session turns.
         """
         if not HAS_REQUESTS:
             return []
 
         r = requests.post(
-            f"{self.qdrant_url}/collections/{self.collection}/search",
-            json={"vector": query_vector, "limit": top_k, "with_payload": True},
+            f"{self.qdrant_url}/collections/{self.collection}/points/search",
+            json={
+                "vector": query_vector,
+                "limit": top_k,
+                "with_payload": True,
+                "filter": {
+                    "must": [{"key": "type", "match": {"value": "memory"}}]
+                },
+            },
             timeout=10,
         )
         hits = []
         for rank, point in enumerate(r.json().get("result", [])):
             payload = point.get("payload", {})
+            # Memory entries have "content", turn entries have user/assistant_content
+            text = payload.get("content") or (
+                payload.get("user_content", "")
+                + ("\n" + payload.get("assistant_content", "") if payload.get("assistant_content") else "")
+            )
             hits.append({
                 "id": str(point.get("id", "")),
                 "score": point.get("score", 0.0),
                 "rank": rank + 1,
                 "method": "vector",
-                "text": payload.get("content", "")[:200],
+                "text": text[:500],
             })
         return hits
 

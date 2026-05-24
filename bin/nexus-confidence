@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""CLI für das Confidence-Scoring-Modul.
+
+Testet eine Query + Antwort gegen Nexus Memory und gibt
+einen Confidence-Report aus.
+
+Usage:
+    nexus-confidence "Was ist Nexus?" "Nexus ist ein Memory-System..."
+    
+    # Oder mit Datei:
+    nexus-confidence --query query.txt --answer answer.txt
+    
+    # Nur Chunks anzeigen:
+    nexus-confidence --chunks-only "Was ist Nexus?"
+"""
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+# Sicherstellen dass Nexus im Pfad ist
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from nexus.confidence import ConfidenceScorer
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Confidence-Scoring für RAG-Antworten gegen Nexus Memory"
+    )
+    parser.add_argument("query", nargs="?", help="Die Query / Frage")
+    parser.add_argument("answer", nargs="?", help="Die generierte Antwort")
+    parser.add_argument("--query-file", help="Query aus Datei lesen")
+    parser.add_argument("--answer-file", help="Antwort aus Datei lesen")
+    parser.add_argument("--chunks-only", action="store_true",
+                        help="Nur Chunks anzeigen, kein Scoring")
+    parser.add_argument("--top-k", type=int, default=5, help="Anzahl Chunks (default: 5)")
+    parser.add_argument("--pretty", action="store_true", help="Formatierte Ausgabe")
+
+    args = parser.parse_args()
+
+    # Query lesen
+    query = args.query
+    if args.query_file:
+        query = Path(args.query_file).read_text().strip()
+
+    if not query:
+        parser.print_help()
+        sys.exit(1)
+
+    # Antwort lesen (für Scoring)
+    answer = args.answer
+    if args.answer_file:
+        answer = Path(args.answer_file).read_text().strip()
+
+    # Scorer initialisieren
+    scorer = ConfidenceScorer(top_k=args.top_k)
+
+    if args.chunks_only:
+        # Nur Chunks anzeigen
+        import nexus.confidence as nc
+        q_emb = nc._embed([query])
+        if q_emb:
+            chunks = nc._fetch_chunks(q_emb[0], top_k=args.top_k)
+            print(f"\n🧩 Chunks für: \"{query}\"\n")
+            for i, c in enumerate(chunks):
+                text = c.get("text", "")[:300]
+                print(f"  [{i+1}] Score: {c['score']:.4f}")
+                print(f"       {text}")
+                if i < len(chunks) - 1:
+                    print()
+        else:
+            print("❌ Embedding fehlgeschlagen")
+        return
+
+    # Volles Scoring
+    report = scorer.evaluate(query=query, answer=answer or query)
+
+    if args.pretty:
+        _print_pretty(report)
+    else:
+        print(report.json())
+
+
+def _print_pretty(report):
+    """Formatierte Konsolen-Ausgabe."""
+    s = report.signals
+
+    # Label basierend auf Confidence
+    if report.error:
+        label = f"❌ {report.error}"
+    elif report.confidence >= 0.8:
+        label = "🟢 Sehr hoch"
+    elif report.confidence >= 0.6:
+        label = "🟡 Mittel"
+    elif report.confidence >= 0.4:
+        label = "🟠 Niedrig"
+    else:
+        label = "🔴 Sehr niedrig"
+
+    print(f"\n{'═'*50}")
+    print(f"  Confidence: {label}")
+    print(f"  Score:      {report.confidence:.1%}")
+    print(f"{'═'*50}")
+    print(f"  📊 Signale:")
+    print(f"    1. Ähnlichkeit  (Query-Chunk):    {s.similarity:.1%}")
+    print(f"    2. Dominanz     (Top-Chunk):       {s.dominance:.1%}")
+    print(f"    3. Grounding    (Antwort-Chunk):   {s.grounding:.1%}")
+    print(f"    4. Fakten       (Wort-Overlap):    {s.factual:.1%}")
+    print(f"    5. Coverage     (Chunk-Breite):    {s.coverage:.1%}")
+    print(f"{'═'*50}")
+    print(f"  Chunks: {report.num_chunks} | Top-Score: {report.top_chunk_score:.4f}")
+    if report.error:
+        print(f"  ⚠️  {report.error}")
+
+
+if __name__ == "__main__":
+    main()
