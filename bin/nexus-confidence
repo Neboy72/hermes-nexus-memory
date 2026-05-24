@@ -22,12 +22,12 @@ from pathlib import Path
 # Sicherstellen dass Nexus im Pfad ist
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from nexus.confidence import ConfidenceScorer
+from nexus.confidence import GroundingScorer
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Confidence-Scoring für RAG-Antworten gegen Nexus Memory"
+        description="Grounding-Scoring für RAG-Antworten gegen Nexus Memory"
     )
     parser.add_argument("query", nargs="?", help="Die Query / Frage")
     parser.add_argument("answer", nargs="?", help="Die generierte Antwort")
@@ -55,7 +55,7 @@ def main():
         answer = Path(args.answer_file).read_text().strip()
 
     # Scorer initialisieren
-    scorer = ConfidenceScorer(top_k=args.top_k)
+    scorer = GroundingScorer(top_k=args.top_k)
 
     if args.chunks_only:
         # Nur Chunks anzeigen
@@ -84,35 +84,44 @@ def main():
 
 
 def _print_pretty(report):
-    """Formatierte Konsolen-Ausgabe."""
+    """Formatierte Konsolen-Ausgabe mit Why-Hints."""
     s = report.signals
 
-    # Label basierend auf Confidence
     if report.error:
         label = f"❌ {report.error}"
-    elif report.confidence >= 0.8:
-        label = "🟢 Sehr hoch"
-    elif report.confidence >= 0.6:
-        label = "🟡 Mittel"
-    elif report.confidence >= 0.4:
-        label = "🟠 Niedrig"
     else:
-        label = "🔴 Sehr niedrig"
+        label = report.label
 
-    print(f"\n{'═'*50}")
-    print(f"  Grounding: {label}")
-    print(f"  Score:      {report.confidence:.1%}")
-    print(f"{'═'*50}")
+    # Why-Hints für jedes Signal
+    hints = {
+        "similarity": f"Query passt{' gut' if s.similarity > 0.6 else ' kaum'} zu den Chunks",
+        "dominance": f"Konzentriert{' stark' if s.dominance > 0.6 else ' moderat'} auf einen Top-Chunk",
+        "grounding": f"Antwort{' basiert auf' if s.grounding > 0.6 else ' verlässt'} den Chunk-Quellen",
+        "factual": f"Fachbegriffe{' stimmen' if s.factual > 0.6 else ' fehlen'} in den Quell-Chunks",
+        "coverage": f"Chunks decken{' breit' if s.coverage > 0.6 else ' schmal'} die Frage ab",
+    }
+
+    print(f"\n{'═'*55}")
+    print(f"  Grounding:       {label}")
+    print(f"  Score:           {report.grounding:.1%}")
+    print(f"{'═'*55}")
+    print(f"  >> {hints['similarity']}")
+    print(f"  >> {hints['dominance']}")
+    print(f"  >> {hints['grounding']}")
+    print(f"  >> {hints['factual']}")
+    print(f"  >> {hints['coverage']}")
+    print(f"{'─'*55}")
     print(f"  📊 Signale:")
-    print(f"    1. Ähnlichkeit  (Query-Chunk):    {s.similarity:.1%}")
-    print(f"    2. Dominanz     (Top-Chunk):       {s.dominance:.1%}")
-    print(f"    3. Grounding    (Antwort-Chunk):   {s.grounding:.1%}")
-    print(f"    4. Fakten       (Wort-Overlap):    {s.factual:.1%}")
-    print(f"    5. Coverage     (Chunk-Breite):    {s.coverage:.1%}")
-    print(f"{'═'*50}")
+    print(f"    1. Ähnlichkeit   (Query-Chunk):      {s.similarity:.1%}")
+    print(f"    2. Dominanz      (Top-Chunk):         {s.dominance:.1%}")
+    print(f"    3. Grounding     (Antwort-Chunk):     {s.grounding:.1%}")
+    print(f"    4. Fakten        (Named Entities):    {s.factual:.1%}")
+    print(f"    5. Coverage      (Chunk-Breite):      {s.coverage:.1%}")
+    print(f"{'═'*55}")
     print(f"  Chunks: {report.num_chunks} | Top-Score: {report.top_chunk_score:.4f}")
     if report.error:
         print(f"  ⚠️  {report.error}")
+    print()
 
 
 if __name__ == "__main__":

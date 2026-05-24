@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.6.1] — 2026-05-24
+
+### Added
+
+- **Named Entity Matching** — Factual-Signal (`_signal_factual`) von Wort-Overlap auf Named Entity Extraction umgestellt. Erkennt 30+ technische Fachbegriffe (Nexus, Qdrant, Voyage, BM25, GPT, RAG, etc.) statt einfacher Wörter. → schärfere Halluzinations-Erkennung
+- **Why-Hints** — `nexus-confidence --pretty` zeigt jetzt pro Signal eine verständliche Erklärung: „Query passt gut zu den Chunks“, „Fachbegriffe fehlen in den Quell-Chunks“, etc.
+- **Stanford-CS229-Why-Hinweis** — Modul-Docstring erklärt warum Grounding nötig ist (SFT trainiert Plausibilität statt Wahrheit)
+
+### Changed
+
+- **Grounding Rebranding** — `ConfidenceScorer` → `GroundingScorer`, `ConfidenceReport` → `GroundingReport`, `report.confidence` → `report.grounding`. Konsequente Terminologie: Es misst Quellenabstützung, nicht Modell-Vertrauen.
+- **CLI Rebranding** — `bin/nexus-confidence` Importe, Labels und Ausgabe auf Grounding umgestellt
+
+### Fixed
+
+- **Factual-Signal** — Alte Logik erkannte nur Stopwort-gefilterte Einzelwörter. Neue Logik matched technische Named Entities präziser.
+
+### Acknowledgements
+
+- Thanks to [@S_BatMan](https://x.com/S_BatMan) for the discussion on multi-level provenance
+- Thanks to Miosha for the v1.6.1 implementation in openclaw-nexus-memory
+
 ## [1.6.0] — 2026-05-24
 
 ### Added
@@ -63,6 +85,10 @@
 - `nexus_remember()` erweiterte Signatur: `provenance`, `created_by`, `session_id`, `source_type`
 - `nexus_update()` erweiterte Signatur: `modified_by`
 - Version bumped from `1.4.0-dev` to `1.4.0`
+
+### Acknowledgements
+
+- Thanks to [@S_BatMan](https://x.com/S_BatMan) (Steven Batchelor-Manning) for the discussion on why multi-level provenance is critical for self-healing AI memory. His comment was the direct trigger for this feature.
 
 ## [1.3.0] — 2026-05-18
 

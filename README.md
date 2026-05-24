@@ -33,7 +33,7 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 |---------|-------------|---------------|
 | ✅ **RAG Grounding Scoring** | 5-signal evaluation: similarity, dominance, grounding, factual overlap, coverage | Know *how reliable* an answer really is — 🟢 Very High → ⛔ Very Low |
 | 🧩 **Grounding CLI** | `bin/nexus-confidence --pretty "query" "answer"` | Test confidence of any RAG response in seconds |
-| 🎯 **3-Provider Embedding** | Confidence Scorer uses the same provider as your system (voyage/sentence-transformers/ollama) | No dimension mismatch — works with any configuration |
+| 🎯 **3-Provider Embedding** | Grounding Scorer uses the same provider as your system (voyage/sentence-transformers/ollama) | No dimension mismatch — works with any configuration |
 | 🧹 **Retrieval Filter** | `search_vector()` filters on `type: memory` — no more session turns in results | Clean results, only facts, no chat history noise |
 
 ### v1.5.0
@@ -131,7 +131,7 @@ That's it. Hybrid search activates automatically when `bm25s` is installed.
 | `nexus_search(query, limit=5)` | Hybrid search — BM25 + vector + RRF fusion |
 | `nexus_remember(content, category, source)` | Save facts, decisions, preferences, patterns |
 | `nexus_forget(memory_id)` | Remove a specific memory |
-| `nexus_confidence(query, answer)` | Confidence scoring — how reliable is this RAG response? |
+| `nexus_confidence(query, answer)` | Grounding scoring — how reliable is this RAG response? |
 
 **Saved once → persists across sessions, model switches, and gateway restarts.**
 
@@ -264,7 +264,7 @@ One plugin. Three backends. Same tools, same API, same results.
 │  Core ──────────── Semantic vector search (Qdrant)           │
 │  Retrieval ─────── Hybrid BM25 + Vector + RRF + Tier Boost   │
 │  Health ────────── Belief Drift Detection (0–10 scoring)     │
-│  Confidence ────── RAG Grounding Scoring (5-Signal)         │
+│  Grounding ─────── RAG Grounding Scoring (5-Signal)         │
 │                                                              │
 │         ┌──────────────┐     ┌─────────────────────┐        │
 │         │   Qdrant     │     │  Embedding Provider  │        │
@@ -334,4 +334,4 @@ MIT — use it, modify it, ship it.
 
 ---
 
-<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.6.0 — Grounding Scoring</sub>
+<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.6.1 — Grounding Rebranding + Named Entity Matching</sub>

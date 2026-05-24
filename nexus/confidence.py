@@ -3,6 +3,13 @@
 Bewertet wie vertrauenswürdig eine generierte Antwort basierend auf
 den retrieved Chunks ist. Ändert nichts an der bestehenden Pipeline.
 
+**Warum Grounding?**
+Stanford CS229 (Yann Dubois) zeigt: SFT (Supervised Fine-Tuning) trainiert
+Modelle dazu plausibel klingende Antworten zu geben, selbst wenn sie die
+Fakten nicht im Pre-Training gelernt haben. Die Folge: Halluzination.
+Grounding ist die Gegenmassnahme — es prüft ob die Antwort tatsächlich
+durch die abgerufenen Fakten gedeckt ist, nicht nur ob sie gut klingt.
+
 Signale:
 1. **similarity** — Query-Embedding ↔ Chunk-Embeddings (max cosine)
 2. **dominance**  — Wie stark stützt sich alles auf einen Top-Chunk?
@@ -66,12 +73,12 @@ class SignalScores:
 
 
 @dataclass
-class ConfidenceReport:
-    """Vollständiger Report für einen evaluate()-Durchlauf."""
+class GroundingReport:
+    """Vollständiger Grounding-Report für einen evaluate()-Durchlauf."""
     query: str = ""
     answer: str = ""
     signals: SignalScores = field(default_factory=SignalScores)
-    confidence: float = 0.0
+    grounding: float = 0.0
     label: str = ""
     num_chunks: int = 0
     top_chunk_score: float = 0.0
@@ -193,10 +200,10 @@ def _fetch_chunks(
         return []
 
 
-# ── Confidence Scorer ──────────────────────────────────────────────
+# ── Grounding Scorer ──────────────────────────────────────────────
 
 
-class ConfidenceScorer:
+class GroundingScorer:
     """Bewertet die Vertrauenswürdigkeit einer RAG-Antwort.
 
     Nutzt vier Signale:
@@ -237,9 +244,9 @@ class ConfidenceScorer:
                     Bei None werden sie aus Qdrant geholt.
 
         Returns:
-            ConfidenceReport mit allen Signalen.
+            GroundingReport mit allen Signalen.
         """
-        report = ConfidenceReport(query=query, answer=answer)
+        report = GroundingReport(query=query, answer=answer)
 
         # Schritt 1: Query embedden
         q_emb = _embed([query], provider=self.embed_provider)
@@ -294,22 +301,22 @@ class ConfidenceScorer:
         report.signals = signals
 
         # Schritt 5: Gesamt-Grounding + Label
-        report.confidence = self._aggregate(signals)
+        report.grounding = self._aggregate(signals)
         report.chunk_count = len(chunks)
-        report.label = self._label(report.confidence)
+        report.label = self._label(report.grounding)
 
         return report
 
     @staticmethod
-    def _label(confidence: float) -> str:
-        """Menschlesbares Label fuer den Confidence-Wert."""
-        if confidence >= 0.8:
+    def _label(grounding: float) -> str:
+        """Menschlesbares Label fuer den Grounding-Wert."""
+        if grounding >= 0.8:
             return "🟢 Sehr hoch"
-        elif confidence >= 0.6:
+        elif grounding >= 0.6:
             return "🟡 Hoch"
-        elif confidence >= 0.4:
+        elif grounding >= 0.4:
             return "🟠 Mittel"
-        elif confidence >= 0.2:
+        elif grounding >= 0.2:
             return "🔴 Niedrig"
         else:
             return "⛔ Sehr niedrig"
@@ -355,57 +362,59 @@ class ConfidenceScorer:
         # Square root, damit moderate Dominanz nicht zu hart bestraft wird
         return math.sqrt(ratio)
 
+    # Technische Named Entities für das Factual-Signal
+    _TECH_ENTITIES = {
+        # Produkte & Frameworks
+        "nexus", "qdrant", "voyage", "ollama", "bm25", "gpt", "claude",
+        "gemini", "rag", "hermes", "openclaw", "whisper", "yt-dlp", "twikit",
+        "github", "discord", "telegram", "docker", "python",
+        # Konzepte
+        "embedding", "token", "transformer", "attention", "finetune",
+        "pretrain", "rlhf", "sft", "dpo", "ppo", "lora", "quantization",
+        "quantization", "vector", "cosine", "similarity",
+        # Fachbegriffe
+        "grounding", "provenance", "hallucination", "chunk", "retrieval",
+        "pipeline", "latency", "throughput", "inference",
+        # Spezifisch
+        "karpathy", "stanford", "cs229", "scaling", "chinchilla",
+    }
+
     @staticmethod
     def _signal_factual(
         answer: str,
         chunk_texts: list[str],
     ) -> float:
-        """Signal 5: Faktische Überlappung — Schutz vor Halluzinationen.
+        """Signal 5: Named Entity Matching — schützt vor Halluzinationen.
 
-        Extrahiert signifikante Wörter (>3 Buchstaben, keine Stopwords)
-        aus der Antwort und prüft ob sie in den Chunk-Texten vorkommen.
-        Niedriger Wert = Antwort verwendet Begriffe die in keinem Chunk stehen.
+        Extrahiert technische Named Entities aus der Antwort und prüft
+        ob sie in den Chunk-Texten vorkommen. Erkennt Fachbegriffe wie
+        Voyage, Qdrant, BM25, GPT, RAG — nicht nur einfache Wörter.
+
+        Niedriger Wert = Antwort verwendet Fachbegriffe die in keinem
+        Chunk-Quelltext stehen.
         """
         if not chunk_texts or not answer:
             return 0.0
 
-        # Einfache Stopwords (Deutsch + Englisch)
-        stopwords = {
-            "der", "die", "das", "den", "dem", "des", "ein", "eine", "einer",
-            "eines", "einem", "und", "oder", "aber", "mit", "von", "für",
-            "auf", "bei", "aus", "nach", "vor", "durch", "über", "unter",
-            "zwischen", "an", "am", "im", "in", "ist", "sind", "war", "wird",
-            "werden", "hat", "haben", "hätte", "the", "and", "for", "with",
-            "this", "that", "from", "have", "been", "were", "nicht", "kein",
-            "keine", "auch", "nur", "schon", "noch", "bis", "wie", "als",
-            "wenn", "dann", "dort", "hier", "da", "es", "sie", "er", "wir",
-            "ihr", "sie", "sich", "zum", "zur", "beim", "ins", "dass",
-        }
+        ans_lower = answer.lower()
+        chunk_all_lower = " ".join(ct.lower() for ct in chunk_texts)
 
-        # Tokenisiere Antwort
-        ans_words = set(
-            w.lower().strip(".,!?;:()[]{}'\"-")
-            for w in answer.split()
-            if len(w) > 3 and w.lower().strip(".,!?;:()[]{}'\"-") not in stopwords
-        )
+        # Entities in der Antwort finden
+        ans_entities = set()
+        for entity in GroundingScorer._TECH_ENTITIES:
+            if entity in ans_lower:
+                ans_entities.add(entity)
 
-        if not ans_words:
-            return 1.0  # Keine signifikanten Wörter → neutral
+        if not ans_entities:
+            return 1.0  # Keine technischen Begriffe → neutral
 
-        # Tokenisiere alle Chunks
-        chunk_all_words = set()
-        for ct in chunk_texts:
-            for w in ct.split():
-                cleaned = w.lower().strip(".,!?;:()[]{}'\"-")
-                if len(cleaned) > 3 and cleaned not in stopwords:
-                    chunk_all_words.add(cleaned)
+        # Prüfen welche Entities auch in Chunks vorkommen
+        matched = sum(1 for e in ans_entities if e in chunk_all_lower)
+        score = matched / len(ans_entities)
 
-        if not chunk_all_words:
-            return 0.0
-
-        # Overlap: wie viele Antwort-Wörter kommen in Chunks vor?
-        overlap = ans_words & chunk_all_words
-        return len(overlap) / len(ans_words)
+        # Bonus: Wenn alle Entities matched → 1.0
+        # Wenn keine → 0.0, dazwischen linear
+        return round(min(score, 1.0), 4)
 
     @staticmethod
     def _signal_grounding(
