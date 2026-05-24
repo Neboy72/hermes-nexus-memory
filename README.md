@@ -31,10 +31,10 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 
 | Feature | What it does | Why it matters |
 |---------|-------------|---------------|
-| ✅ **RAG Confidence Scoring** | 5-signal evaluation: similarity, dominance, grounding, factual overlap, coverage | Know *how reliable* an answer really is — 🟢 Sehr hoch → ⛔ Sehr niedrig |
+| ✅ **RAG Confidence Scoring** | 5-signal evaluation: similarity, dominance, grounding, factual overlap, coverage | Know *how reliable* an answer really is — 🟢 Very High → ⛔ Very Low |
 | 🧩 **Confidence CLI** | `bin/nexus-confidence --pretty "query" "answer"` | Test confidence of any RAG response in seconds |
-| 🎯 **3-Provider Embedding** | Confidence Scorer nutzt den gleichen Provider wie dein System (voyage/sentence-transformers/ollama) | Kein Dimension-Mismatch — funktioniert mit jeder Konfiguration |
-| 🧹 **Retrieval Filter** | `search_vector()` filtert auf `type: memory` — keine Session-Turns mehr in Suchergebnissen | Saubere Treffer, nur Fakten, kein Chat-Verlauf-Rauschen |
+| 🎯 **3-Provider Embedding** | Confidence Scorer uses the same provider as your system (voyage/sentence-transformers/ollama) | No dimension mismatch — works with any configuration |
+| 🧹 **Retrieval Filter** | `search_vector()` filters on `type: memory` — no more session turns in results | Clean results, only facts, no chat history noise |
 
 ### v1.5.0
 

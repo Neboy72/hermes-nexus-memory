@@ -4,26 +4,26 @@
 
 ### Added
 
-- **RAG Confidence Scoring** — `nexus/confidence.py` bewertet generierte Antworten mit 5 Signalen:
-  - `similarity` — Query-Chunk Ähnlichkeit (cosine max)
-  - `dominance` — Konzentration auf Top-Chunk (Stabilität)
-  - `grounding` — Semantische Überlappung Antwort ↔ Chunks
-  - `factual` — Wörtlicher Wort-Overlap (Halluzinations-Schutz)
-  - `coverage` — Wie breit decken Chunks die Frage ab?
-  - Aggregation zu Gesamt-Confidence mit Label (🟢 Sehr hoch → ⛔ Sehr niedrig)
-- **Confidence CLI** — `bin/nexus-confidence --pretty "query" "answer"` für Tests
-- **3-Provider Embedding** — Confidence Scorer unterstützt voyage, sentence-transformers, ollama (gleicher Provider wie System-Konfiguration)
+- **RAG Confidence Scoring** — `nexus/confidence.py` evaluates generated answers with 5 signals:
+  - `similarity` — Query-Chunk similarity (cosine max)
+  - `dominance` — Top-chunk concentration (stability)
+  - `grounding` — Semantic overlap between answer and chunks
+  - `factual` — Word-level overlap (hallucination guard)
+  - `coverage` — How broadly chunks cover the question
+  - Aggregated to a single confidence label (🟢 Very High → ⛔ Very Low)
+- **Confidence CLI** — `bin/nexus-confidence --pretty "query" "answer"` for testing
+- **3-Provider Embedding** — Confidence Scorer supports voyage, sentence-transformers, ollama (same provider as system config)
 
 ### Changed
 
-- `nexus/retrieval/__init__.py` — `search_vector()` nutzt korrekten `/points/search` Endpoint
-- `nexus/retrieval/__init__.py` — `search_vector()` filtert jetzt auf `type: memory` (keine Session-Turns mehr)
-- README um Confidence Scoring ergänzt (Tools, Architektur, Vergleichstabelle)
+- `nexus/retrieval/__init__.py` — `search_vector()` now uses the correct `/points/search` endpoint
+- `nexus/retrieval/__init__.py` — `search_vector()` now filters on `type: memory` (no more session turns)
+- README updated with Confidence Scoring section (tools, architecture, comparison table)
 
 ### Fixed
 
-- **Qdrant API-Endpoint** — Falsche URL `/collections/{name}/search` → korrekt `/collections/{name}/points/search` (galt für v1.4.0–v1.5.0)
-- **Session-Turn Rauschen** — Suchergebnisse enthielten zu 89% Chat-Verläufe statt Memory-Einträge — jetzt gefiltert auf `type: "memory"`
+- **Qdrant API endpoint** — Incorrect URL `/collections/{name}/search` → correct `/collections/{name}/points/search` (affected v1.4.0–v1.5.0)
+- **Session-turn noise** — Search results were ~89% chat history instead of memory entries — now filtered to `type: "memory"`
 
 ## [1.4.0] — 2026-05-23
 
