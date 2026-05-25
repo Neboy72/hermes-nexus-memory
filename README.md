@@ -10,7 +10,7 @@ Nexus Memory fixes that. **Permanently.**
 [![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
-[![Version](https://img.shields.io/badge/version-1.7.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
+[![Version](https://img.shields.io/badge/version-1.7.1-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
 > ⭐ **If this project helps your agent remember — drop a star so others find it too. Takes 2 seconds.**
 
@@ -30,6 +30,13 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 ---
 
 ## What's New
+
+### v1.7.1
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 🔍 **Provenance Scan** | `scan_provenance()` scrollt alle Qdrant-Entries und zeigt Source-Typen, Confidence-Verteilung, Criticality-Marker | Transparenz über die Herkunft jeder Memory — wichtig für Audits und Debugging |
+| 🔗 **Wikilink Orphan Detection** | `find_wikilink_orphans()` findet `[[wikilinks]]` die nirgends auflösen — backtick-aware, kein Rauschen | Stellt sicher dass dein Wiki keine toten Links hat |
 
 ### v1.7.0
 

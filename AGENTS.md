@@ -190,11 +190,13 @@ hermes status | grep -i nexus
 
 # Test memory save and retrieve
 # In the next agent session, try:
-# nexus_remember(content="Nexus Memory v1.7.0 installed successfully", category="fact", tier=2)
+# nexus_remember(content="Nexus Memory v1.7.1 installed successfully", category="fact", tier=2)
 # nexus_remember(content="Primary API key goes in .env", category="config", tier=3)
 # nexus_search(query="installed successfully", limit=1)
 
-# Note: v1.7.0 introduces tiered enrichment and memory expiry.
+# Note: v1.7.1 introduces provenance scan and wikilink orphan detection.
+# - Run: from nexus.provenance import scan_provenance; scan_provenance()
+# - Run: from nexus.health import find_wikilink_orphans; find_wikilink_orphans()
 # - Set tier=2 or tier=3 for important memories (default T1 = raw storage)
 # - Expiry policies: static / normal (90d) / volatile (7d) — set via expiry_policy in payload
 ```
@@ -204,7 +206,7 @@ hermes status | grep -i nexus
 After installation, report:
 
 ```
-✅ Nexus Memory v1.7.0 installed
+✅ Nexus Memory v1.7.1 installed
 
 • Embedding: <provider chosen>
 • Hybrid Retrieval: <installed/skipped>
@@ -225,7 +227,7 @@ Wenn ja, sagt er dem User Bescheid — kein Watch, keine E-Mail, nichts manuelle
 Der Check läuft automatisch über den Code in **Step 0** oben. Sobald ein neues Release
 erscheint, sieht der User:
 
-> 📢 New version v1.7.0 available (you have v1.6.1). Update by saying: upgrade nexus memory
+> 📢 New version v1.7.1 available (you have v1.6.1). Update by saying: upgrade nexus memory
 
 Ein Upgrade macht der Bot dann selbstständig (Step 2b). Kein manuelles Eingreifen nötig.
 
