@@ -25,6 +25,7 @@ from __future__ import annotations
 import json, re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from enum import Enum
 from pathlib import Path
 from typing import Optional
 
@@ -83,12 +84,82 @@ DEFAULT_STALE_PATTERNS = [
 HISTORICAL_MARKER_STATUSES = ["HISTORICAL", "RESOLVED", "ARCHIVED", "FIXED"]
 
 
+# ── Memory Expiry ───────────────────────────────────────────────────────────
+
+
+class ExpiryPolicy(str, Enum):
+    """How long a memory entry remains valid.
+
+    The policy is stored in the Qdrant payload as ``expiry_policy``.
+    If the field is missing, ``NORMAL`` is assumed.
+    """
+    STATIC = "static"      # Never expires — configs, paths, policies
+    NORMAL = "normal"      # Standard expiry — 90 days
+    VOLATILE = "volatile"  # Short-lived — 7 days
+
+
+# Default shelf life (in days) per expiry policy
+DEFAULT_EXPIRY_DAYS: dict[ExpiryPolicy, int | None] = {
+    ExpiryPolicy.STATIC: None,     # None = never expires
+    ExpiryPolicy.NORMAL: 90,
+    ExpiryPolicy.VOLATILE: 7,
+}
+
+
+def compute_expires_at(
+    created_at: datetime | None,
+    last_confirmed_at: datetime | None,
+    policy: ExpiryPolicy | str | None,
+) -> tuple[datetime | None, bool]:
+    """Compute when a memory expires and whether it's already expired.
+
+    Args:
+        created_at: When the memory was created (from ``timestamp`` payload field).
+        last_confirmed_at: When the memory was last confirmed as still valid.
+        policy: The expiry policy (``static``, ``normal``, or ``volatile``).
+            If ``None`` or unrecognised, defaults to ``NORMAL``.
+
+    Returns:
+        Tuple of ``(expires_at, is_expired)``:
+        - ``expires_at``: The calculated expiry datetime (``None`` for never-expiring).
+        - ``is_expired``: ``True`` if the memory is already past its expiry date.
+    """
+    # Resolve policy
+    if isinstance(policy, str):
+        try:
+            policy = ExpiryPolicy(policy)
+        except ValueError:
+            policy = ExpiryPolicy.NORMAL
+    if policy is None:
+        policy = ExpiryPolicy.NORMAL
+
+    # STATIC never expires
+    if policy == ExpiryPolicy.STATIC:
+        return None, False
+
+    # Determine the anchor date: last_confirmed_at if available, else created_at
+    anchor = last_confirmed_at or created_at
+    if anchor is None:
+        # No anchor → treat as already expired (unknown age is unsafe)
+        return datetime.now(), True
+
+    # Calculate expiry
+    days = DEFAULT_EXPIRY_DAYS.get(policy)
+    if days is None:
+        return None, False  # shouldn't happen, but be safe
+
+    expires_at = anchor + timedelta(days=days)
+    is_expired = datetime.now() > expires_at
+    return expires_at, is_expired
+
+
 @dataclass
 class DriftReport:
     """Structured drift detection report."""
     total_entries: int = 0
     stale: list[dict] = field(default_factory=list)
     old: list[dict] = field(default_factory=list)
+    expired: list[dict] = field(default_factory=list)
     mismatches: list[str] = field(default_factory=list)
     score: float = 0.0
     contradictions: list[dict] = field(default_factory=list)
@@ -105,6 +176,7 @@ class DriftReport:
             "total_entries": self.total_entries,
             "stale_count": len(self.stale),
             "old_count": len(self.old),
+            "expired_count": len(self.expired),
             "mismatches": self.mismatches,
             "contradictions": len(self.contradictions),
             "excluded_count": self.excluded_count,
@@ -134,6 +206,7 @@ class DriftDetector:
         self.collection = collection_name
         self.stale_patterns = stale_patterns or DEFAULT_STALE_PATTERNS
         self.old_threshold = timedelta(days=old_threshold_days)
+        # Expiry is stateless — uses compute_expires_at() directly
 
     # ── Private helpers ─────────────────────────────────────────────────────
 
@@ -182,6 +255,35 @@ class DriftDetector:
             if re.search(pattern, content, re.IGNORECASE):
                 findings.append(note)
         return findings
+
+    @staticmethod
+    def _check_expiry(payload: dict) -> tuple[datetime | None, bool]:
+        """Check if a memory payload has expired.
+
+        Reads ``expiry_policy``, ``last_confirmed_at``, and ``timestamp``
+        from the payload. Delegates to :func:`compute_expires_at`.
+
+        Returns:
+            Tuple of ``(expires_at, is_expired)``.
+        """
+        created = payload.get("timestamp")
+        created_at = None
+        if created:
+            try:
+                created_at = datetime.fromisoformat(created.replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                pass
+
+        last_confirmed = payload.get("last_confirmed_at")
+        last_confirmed_at = None
+        if last_confirmed:
+            try:
+                last_confirmed_at = datetime.fromisoformat(last_confirmed.replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                pass
+
+        policy = payload.get("expiry_policy")
+        return compute_expires_at(created_at, last_confirmed_at, policy)
 
     # ── Embedding helpers ───────────────────────────────────────────────────
 
@@ -288,10 +390,23 @@ class DriftDetector:
                 except (ValueError, TypeError):
                     pass
 
+            # Expiry check
+            expires_at, is_expired = self._check_expiry(payload)
+            if is_expired:
+                policy = payload.get("expiry_policy", "normal")
+                report.expired.append({
+                    "id": str(p.get("id", "")),
+                    "expires_at": expires_at.isoformat() if expires_at else None,
+                    "policy": policy,
+                    "category": payload.get("category", "unknown"),
+                    "content_preview": (content or "")[:150],
+                })
+
         # Drift score: weighted combination
         report.score = min(
             len(report.stale) * 0.4 +
             len(report.old) * 0.1 +
+            len(report.expired) * 0.5 +
             len(report.mismatches) * 0.3,
             10.0,
         )
@@ -322,6 +437,9 @@ class DriftDetector:
 
         for entry in entries:
             payload = entry.get("payload", {})
+            # Ensure timestamp is available in payload for expiry check
+            if payload.get("timestamp") is None:
+                payload = {**payload, "timestamp": entry.get("timestamp")}
 
             # Skip historical / resolved / archived entries
             if self._is_excluded(payload):
@@ -349,8 +467,20 @@ class DriftDetector:
                 except (ValueError, TypeError):
                     pass
 
+            # Expiry check
+            expires_at, is_expired = self._check_expiry(payload)
+            if is_expired:
+                policy = payload.get("expiry_policy", "normal")
+                report.expired.append({
+                    "id": entry.get("id", ""),
+                    "expires_at": expires_at.isoformat() if expires_at else None,
+                    "policy": policy,
+                    "content_preview": (content or "")[:150],
+                })
+
         report.score = min(
-            len(report.stale) * 0.4 + len(report.old) * 0.1 + len(report.mismatches) * 0.3,
+            len(report.stale) * 0.4 + len(report.old) * 0.1 +
+            len(report.expired) * 0.5 + len(report.mismatches) * 0.3,
             10.0,
         )
 
