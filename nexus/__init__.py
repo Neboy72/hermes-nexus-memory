@@ -150,6 +150,7 @@ def nexus_remember(
     created_by: str = "System",
     session_id: str | None = None,
     source_type: str = "chat",
+    tier: int | str | None = None,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
     collection_name: str = "hermes-memory",
@@ -215,6 +216,16 @@ def nexus_remember(
             created_by=created_by,
             content=content,
         )
+
+    # ── Tiered Enrichment ──────────────────────────────────────────────
+    from nexus.enrich import decide_tier, enrich, EnrichmentTier
+
+    resolved_tier = (
+        EnrichmentTier.from_str(tier)
+        if tier is not None
+        else decide_tier(content, category)
+    )
+    enrich(resolved_tier, payload)
 
     # Build vector (empty — Qdrant will fail if no vector; caller
     # is expected to have set up an auto-embedding pipeline, or
