@@ -22,7 +22,7 @@ Usage:
 """
 
 from __future__ import annotations
-import json, re
+import json, re, os
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -757,3 +757,142 @@ class DriftDetector:
             "last_accessed": max(timestamps) if timestamps else None,
             "oldest_accessed": min(timestamps) if timestamps else None,
         }
+
+
+# ── Wikilink Orphan Detection ─────────────────────────────────────────────
+
+
+def find_wikilink_orphans(workspace: str | None = None) -> list[dict]:
+    """Find [[wikilinks]] in memory files that don't resolve to any file or heading.
+
+    Backtick-aware: skips wikilinks inside inline code spans (no false
+    positives from code examples).
+
+    Checks these locations:
+    - ``workspace/wiki/*.md`` — wiki entity files
+    - ``workspace/MEMORY.md`` — headings in the main memory file
+    - ``workspace/memory/202*.md`` — date-named memory files
+    - ``~/ObsidianVault/Miosha/Wiki/entities/*.md`` — shared Obsidian wiki
+
+    Args:
+        workspace: Path to workspace directory. Defaults to
+            ``~/.hermes/nexus-workspace``.
+
+    Returns:
+        List of dicts, each with ``target``, ``file``, ``line_num``, ``line``.
+    """
+    if workspace is None:
+        workspace = os.path.expanduser("~/.hermes/nexus-workspace")
+
+    wikilink_re = re.compile(r"\[\[([^|#\]]+)(?:[|#][^\]]*)?\]\]")
+    orphans: list[dict] = []
+    reported_targets: set[str] = set()
+
+    # Collect all resolvable targets
+    wiki_dir = os.path.join(workspace, "wiki")
+    wiki_files: set[str] = set()
+    if os.path.isdir(wiki_dir):
+        wiki_files = {
+            fn[:-3].lower()
+            for fn in os.listdir(wiki_dir)
+            if fn.endswith(".md")
+        }
+
+    memory_headings: set[str] = set()
+    memory_file = os.path.join(workspace, "MEMORY.md")
+    if os.path.exists(memory_file):
+        try:
+            with open(memory_file) as f:
+                for line in f:
+                    m = re.match(r"^(#{1,6})\s+(.+)", line)
+                    if m:
+                        memory_headings.add(m.group(2).strip().lower())
+        except Exception:
+            pass
+
+    memory_dates: set[str] = set()
+    memory_dir = os.path.join(workspace, "memory")
+    if os.path.isdir(memory_dir):
+        memory_dates = {
+            fn[:-3].lower()
+            for fn in os.listdir(memory_dir)
+            if fn.endswith(".md")
+        }
+
+    # Also check shared Obsidian Wiki
+    obsidian_wiki = os.path.expanduser("~/ObsidianVault/Miosha/Wiki/entities")
+    if os.path.isdir(obsidian_wiki):
+        wiki_files.update({
+            fn[:-3].lower()
+            for fn in os.listdir(obsidian_wiki)
+            if fn.endswith(".md")
+        })
+
+    # Scan all memory files for wikilinks
+    texts: dict[str, str] = {}
+    if os.path.exists(memory_file):
+        try:
+            with open(memory_file) as f:
+                texts["MEMORY.md"] = f.read()
+        except Exception:
+            pass
+    if os.path.isdir(memory_dir):
+        for fn in sorted(os.listdir(memory_dir)):
+            if fn.endswith(".md"):
+                try:
+                    with open(os.path.join(memory_dir, fn)) as f:
+                        texts[fn] = f.read()
+                except Exception:
+                    pass
+
+    for fname, content in texts.items():
+        for line_num, line in enumerate(content.splitlines(), 1):
+            # Strip inline code first (backtick-aware)
+            clean_line = re.sub(r"`[^`]+`", "", line)
+            for match in wikilink_re.finditer(clean_line):
+                target = match.group(1).strip()
+                target_key = target.lower()
+                if not target or target_key in reported_targets:
+                    continue
+                reported_targets.add(target_key)
+
+                target_path = os.path.join(workspace, target)
+                target_wiki_path = os.path.join(wiki_dir, f"{target}.md")
+                found = (
+                    target_key in wiki_files
+                    or target_key in memory_headings
+                    or target_key in memory_dates
+                    or os.path.isfile(target_path)
+                    or os.path.isfile(f"{target_path}.md")
+                    or os.path.isfile(target_wiki_path)
+                )
+                if not found:
+                    orphans.append({
+                        "target": target,
+                        "file": fname,
+                        "line_num": line_num,
+                        "line": line.strip()[:200],
+                    })
+
+    return orphans
+
+
+def format_orphan_report(orphans: list[dict]) -> str:
+    """Format orphan wikilink findings as a human-readable report.
+
+    Args:
+        orphans: List of orphans from :func:`find_wikilink_orphans`.
+
+    Returns:
+        Markdown-formatted report string.
+    """
+    lines = ["🔗 **Wikilink Orphan Check**", ""]
+    if not orphans:
+        lines.append("✅ All wikilinks resolve — no orphans found")
+    else:
+        lines.append(f"⚠️ Found {len(orphans)} orphan link(s):")
+        for item in orphans:
+            lines.append(f"  ⚠️ Orphan: [[{item['target']}]] — target not found")
+            lines.append(f"    Referenced in **{item['file']}**:{item['line_num']}")
+    lines.append("")
+    return "\n".join(lines)

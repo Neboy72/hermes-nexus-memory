@@ -1,5 +1,55 @@
 # Changelog
 
+## [1.7.1] — 2026-05-25
+
+### Added
+
+- **Provenance Scan** — `nexus/provenance/` gains `scan_provenance()` + `format_provenance_report()`:
+  - Scans all Qdrant memory entries for provenance metadata
+  - Reports source types, creators, confidence distribution, criticality markers
+  - Paginated scroll handles large collections
+- **Wikilink Orphan Detection** — `nexus/health/` gains `find_wikilink_orphans()` + `format_orphan_report()`:
+  - Finds `[[wikilinks]]` that don't resolve to any file or heading
+  - Backtick-aware: skips inline code spans (no false positives)
+  - Checks workspace wiki/, MEMORY.md headings, memory/ dates, shared Obsidian wiki
+
+### Changed
+
+- `nexus/provenance/__init__.py` — exports `scan_provenance`, `format_provenance_report`
+- `nexus/health/__init__.py` — exports `find_wikilink_orphans`, `format_orphan_report`
+
+---
+
+## [1.7.0] — 2026-05-25
+
+### Added
+
+- **Memory Expiry (Compiled Truth + Timeline)** — Memories now have a shelf life:
+  - `expiry_policy` field: `static` (never), `normal` (90d), `volatile` (7d)
+  - `compute_expires_at()` calculates expiry from `last_confirmed_at` or `created_at`
+  - `valid_until` override: manually set expiry that takes precedence over policy
+  - `DriftReport.expired` lists expired entries with `expiry_reason` (`policy` or `valid_until`)
+  - Report distinguishes between policy-based and valid_until-based expiry
+- **Tiered Enrichment** — `nexus/enrich.py` module:
+  - `EnrichmentTier`: `RAW` (1), `TAGGED` (2), `LINKED` (3)
+  - `decide_tier()` heuristics: importance > category > content length > signal keywords
+  - `enrich()`: T1 no-op, T2 keyword extraction + category validation, T3 semantic linking flag
+  - `nexus_remember()` gains optional `tier` param (int/str/None for auto)
+
+### Changed
+
+- **DriftDetector** — `_check_expiry()` now reads `valid_until` before policy-based check
+- **`nexus_remember()`** — optional `tier` parameter for enrichment depth control
+- All internal `datetime.now()` calls use `timezone.utc` to prevent comparison crashes
+- README updated with Memory Expiry + Tiered Enrichment documentation
+
+### Fixed
+
+- **BLOCKER** — `TypeError: can't compare offset-naive and offset-aware datetimes` in `compute_expires_at()` and `_check_expiry()` (`datetime.now()` → `datetime.now(timezone.utc)`)
+- **MITTEL** — `valid_until` field was ignored by expiry check (now overrides policy-based expiry)
+
+---
+
 ## [1.6.1] — 2026-05-24
 
 ### Added

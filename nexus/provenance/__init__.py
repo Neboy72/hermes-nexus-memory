@@ -69,6 +69,136 @@ SOURCE_TYPES = {
 # ── Level 1: Source ──────────────────────────────────────────────────────────
 
 
+def scan_provenance(qdrant_host: str = "localhost", qdrant_port: int = 6333,
+                     collection_name: str = "hermes-memory", limit: int = 500) -> dict:
+    """Scan all memory entries in Qdrant and analyze provenance metadata.
+
+    Extracts source types, creators, confidence scores, and criticality
+    markers from existing entries.  Provides a snapshot of memory provenance
+    health without running a full drift detection.
+
+    Args:
+        qdrant_host: Qdrant host.
+        qdrant_port: Qdrant port.
+        collection_name: Qdrant collection name.
+        limit: Max entries to scan (default 500, pass -1 for all).
+
+    Returns:
+        Dict with ``source_stats``, ``creator_stats``, ``confidence_avg``,
+        ``criticality_count``, ``total_scanned``.
+    """
+    if not HAS_REQUESTS:
+        return {"error": "requests library required"}
+
+    url = f"http://{qdrant_host}:{qdrant_port}/collections/{collection_name}/points/scroll"
+    sources: dict[str, int] = {}
+    creators: dict[str, int] = {}
+    confidences: list[float] = []
+    criticality_count = 0
+    no_provenance = 0
+    total = 0
+    offset = None
+
+    while True:
+        params: dict[str, Any] = {"limit": 100, "with_payload": True}
+        if offset:
+            params["offset"] = offset
+        try:
+            r = _req.post(url, json=params, timeout=10)
+            data = r.json().get("result", {})
+            points = data.get("points", [])
+            if not points:
+                break
+            for p in points:
+                payload = p.get("payload", {}) or {}
+                total += 1
+                prov = payload.get("provenance") or {}
+                if not prov:
+                    no_provenance += 1
+                    continue
+                source = prov.get("source", {})
+                st = source.get("source_type", "unknown")
+                sources[st] = sources.get(st, 0) + 1
+                by = source.get("created_by", "?")
+                creators[by] = creators.get(by, 0) + 1
+                conf = prov.get("confidence")
+                if conf is not None:
+                    confidences.append(float(conf))
+                # Check for criticality marker in payload
+                crit = payload.get("criticality") or payload.get("_criticality")
+                if crit:
+                    criticality_count += 1
+            offset = data.get("next_page_offset")
+            if offset is None or (limit > 0 and total >= limit):
+                break
+        except Exception as e:
+            _logger.warning("Qdrant scroll failed: %s", e)
+            break
+
+    return {
+        "source_stats": dict(sorted(sources.items(), key=lambda x: -x[1])),
+        "creator_stats": dict(sorted(creators.items(), key=lambda x: -x[1])),
+        "confidence_avg": round(sum(confidences) / len(confidences), 3) if confidences else 0.0,
+        "confidence_min": round(min(confidences), 3) if confidences else 0.0,
+        "confidence_max": round(max(confidences), 3) if confidences else 0.0,
+        "criticality_count": criticality_count,
+        "total_scanned": total,
+        "no_provenance": no_provenance,
+        "provenance_rate": round((total - no_provenance) / total * 100, 1) if total else 0.0,
+    }
+
+
+def format_provenance_report(provenance: dict) -> str:
+    """Format provenance scan results as a human-readable report.
+
+    Args:
+        provenance: Dict returned by :func:`scan_provenance`.
+
+    Returns:
+        Markdown-formatted report string.
+    """
+    lines = ["📊 **Provenance Scan Report**", ""]
+    if "error" in provenance:
+        lines.append(f"⚠️ {provenance['error']}")
+        return "\n".join(lines)
+
+    lines.append(f"  Total entries scanned: **{provenance['total_scanned']}**")
+    lines.append(f"  With provenance metadata: **{provenance['total_scanned'] - provenance['no_provenance']}** "
+                 f"({provenance['provenance_rate']}%)")
+    lines.append(f"  Without provenance: **{provenance['no_provenance']}**")
+
+    src = provenance.get("source_stats", {})
+    if src:
+        lines.append("")
+        lines.append("  **Source types:**")
+        for st, count in src.items():
+            trust = SOURCE_TYPES.get(st, SOURCE_TYPES["unknown"])["trust"]
+            emoji = "🟢" if trust >= 0.8 else "🟡" if trust >= 0.5 else "🔴"
+            lines.append(f"    {emoji} {st}: {count} ({trust:.0%} trust)")
+
+    cr = provenance.get("creator_stats", {})
+    if cr:
+        lines.append("")
+        lines.append("  **Created by:**")
+        for name, count in cr.items():
+            lines.append(f"    👤 {name}: {count}")
+
+    if provenance.get("confidences"):
+        lines.append("")
+        lines.append(f"  **Confidence:** avg {provenance['confidence_avg']:.2f} "
+                     f"(range {provenance['confidence_min']:.1f}–{provenance['confidence_max']:.1f})")
+
+    if provenance.get("criticality_count", 0) > 0:
+        lines.append("")
+        lines.append(f"  ★ **High-criticality entries:** {provenance['criticality_count']}")
+    else:
+        lines.append("")
+        lines.append("  No ★ criticality markers found")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
 def attach_source(
     session_id: str | None = None,
     source_type: str = "chat",
