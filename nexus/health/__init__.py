@@ -24,7 +24,7 @@ Usage:
 from __future__ import annotations
 import json, re
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -141,7 +141,7 @@ def compute_expires_at(
     anchor = last_confirmed_at or created_at
     if anchor is None:
         # No anchor → treat as already expired (unknown age is unsafe)
-        return datetime.now(), True
+        return datetime.now(timezone.utc), True
 
     # Calculate expiry
     days = DEFAULT_EXPIRY_DAYS.get(policy)
@@ -149,7 +149,7 @@ def compute_expires_at(
         return None, False  # shouldn't happen, but be safe
 
     expires_at = anchor + timedelta(days=days)
-    is_expired = datetime.now() > expires_at
+    is_expired = datetime.now(timezone.utc) > expires_at
     return expires_at, is_expired
 
 
@@ -260,12 +260,35 @@ class DriftDetector:
     def _check_expiry(payload: dict) -> tuple[datetime | None, bool]:
         """Check if a memory payload has expired.
 
-        Reads ``expiry_policy``, ``last_confirmed_at``, and ``timestamp``
-        from the payload. Delegates to :func:`compute_expires_at`.
+        Reads ``valid_until``, ``expiry_policy``, ``last_confirmed_at``,
+        and ``timestamp`` from the payload.
+
+        ``valid_until`` takes precedence: if set, it overrides the
+        expiry-policy based check (a memory with ``valid_until`` far in
+        the future won't be flagged as expired even if its anchor is old,
+        and one with ``valid_until`` in the past is expired regardless
+        of policy).
 
         Returns:
             Tuple of ``(expires_at, is_expired)``.
         """
+        # Check valid_until override first
+        valid_until_str = payload.get("valid_until")
+        if valid_until_str:
+            try:
+                valid_until = datetime.fromisoformat(
+                    valid_until_str.replace("Z", "+00:00")
+                )
+                now = datetime.now(timezone.utc)
+                if now > valid_until:
+                    # Past valid_until → expired regardless of policy
+                    return valid_until, True
+                # Future valid_until → not expired, skip policy check
+                return valid_until, False
+            except (ValueError, TypeError):
+                pass  # fall through to policy-based check
+
+        # Policy-based expiry
         created = payload.get("timestamp")
         created_at = None
         if created:
@@ -352,7 +375,7 @@ class DriftDetector:
         points = self._scroll_all()
         report = DriftReport(total_entries=len(points))
 
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
         for p in points:
             payload = p.get("payload", {})
@@ -394,10 +417,13 @@ class DriftDetector:
             expires_at, is_expired = self._check_expiry(payload)
             if is_expired:
                 policy = payload.get("expiry_policy", "normal")
+                # Determine what triggered expiry
+                has_valid_until = bool(payload.get("valid_until"))
                 report.expired.append({
                     "id": str(p.get("id", "")),
                     "expires_at": expires_at.isoformat() if expires_at else None,
                     "policy": policy,
+                    "expiry_reason": "valid_until" if has_valid_until else "policy",
                     "category": payload.get("category", "unknown"),
                     "content_preview": (content or "")[:150],
                 })
@@ -433,7 +459,7 @@ class DriftDetector:
                      "payload": dict|None}
         """
         report = DriftReport(total_entries=len(entries))
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
         for entry in entries:
             payload = entry.get("payload", {})
@@ -671,7 +697,7 @@ class DriftDetector:
             {"memory_id": "abc-123", "last_accessed": "2026-05-18T16:00:00"}
         """
         usage = self._load_usage()
-        now = datetime.now().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         usage[memory_id] = now
         self._save_usage(usage)
         return {"memory_id": memory_id, "last_accessed": now}
