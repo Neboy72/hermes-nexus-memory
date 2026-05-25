@@ -277,21 +277,23 @@ One plugin. Three backends. Same tools, same API, same results.
 
 ## vs Other Memory Plugins
 
-Nexus Memory ist das einzige Memory-Plugin das all das mitbringt — kein anderes Plugin bietet auch nur die Hälfte:
+| | agentmemory | Holographic | Mem0 / Honcho | **Nexus** 🏆 |
+|---|---|---|---|---|
+| Semantic search | ✅ (Gemini API) | ❌ Hash-based | ✅ (Cloud API) | ✅ (local or cloud) |
+| **Hybrid retrieval** | ❌ | ❌ | ❌ | **✅ BM25 + Vector + RRF** |
+| **Drift detection** | ❌ | ❌ | ❌ | **✅ Scored 0–10** |
+| **Anti-poisoning** | ❌ | ❌ | ❌ | **✅ Source tiers** |
+| 🔗 **Multi-Level Provenance** | ❌ | ❌ | ❌ | **✅ Source + Corroboration + Dependency Graph** |
+| 🗣️ **Authority Chain** | ❌ | ❌ | ❌ | **✅ 6-level priority resolution** |
+| ✅ **RAG Grounding Scoring** | ❌ | ❌ | ❌ | **✅ 5-signal evaluation** |
+| 🔧 **Auto-Fix / Consolidation** | ❌ | ❌ | ❌ | **✅ `nexus_consolidate()`** |
+| 📅 **Memory Expiry** | ❌ | ❌ | ❌ | **✅ 3 policies (static/normal/volatile)** |
+| 📊 **Tiered Enrichment** | ❌ | ❌ | ❌ | **✅ Auto T1/T2/T3 Heuristik** |
+| External APIs | Gemini required | None | Multiple cloud APIs | **Optional** |
+| Code size | ~50K TypeScript | ~1.5K Python | Varies | **~2.2K Python** |
+| Setup time | 30+ min + OAuth | `hermes memory setup` | Cloud account | **1 command** |
 
-| | Nexus | Andere |
-|---|---|---|
-| 🔗 **Multi-Level Provenance** | ✅ Source + Corroboration + Dependency Graph | ❌ |
-| 🗣️ **Authority Chain** | ✅ 6-level priority resolution | ❌ |
-| 🔍 **Hybrid BM25+Vector+RRF** | ✅ Anti-poisoning retrieval | ❌ |
-| 📅 **Memory Expiry** | ✅ 3 policies (static/normal/volatile) | ❌ |
-| 📊 **Tiered Enrichment** | ✅ Auto-Tagging per T1/T2/T3 | ❌ |
-| 🩺 **Drift Detection** | ✅ Scored 0-10, stale + expired | ❌ |
-| ✅ **RAG Grounding Scoring** | ✅ 5-signal evaluation | ❌ |
-| 🔧 **Auto-Fix / Consolidation** | ✅  `nexus_consolidate()` | ❌ |
-| Local-first | ✅ Kein API-Key nötig | ❌ meist Cloud |
-
-**Nexus ist das einzige Plugin mit Provenance, Authority Chain, Memory Expiry, Tiered Enrichment und Drift Detection — alles in einem Package, alles lokal-first.**
+**Nexus is the only memory plugin with drift detection, provenance, authority chain, memory expiry, and tiered enrichment — plus hybrid retrieval, all in one package.**
 
 ---
 
