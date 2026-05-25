@@ -37,6 +37,16 @@ pip show hermes-nexus-memory 2>/dev/null | grep Version
 # If v1.0.x → upgrade to v1.1.0 (add hybrid + drift detection)
 # If not installed → fresh install
 
+# 🚨 PRE-1.5.0 LEGACY CHECK: Old plugin.yaml structure?
+if [ -f ~/.hermes/plugins/nexus/plugin.yaml ]; then
+    echo "⚠️ Old plugin structure detected (pre-v1.5.0, plugin.yaml)"
+    echo "→ v1.5.0+ uses pyproject.toml instead of plugin.yaml"
+    echo "→ Removing old plugin directory..."
+    rm -rf ~/.hermes/plugins/nexus/
+    echo "✅ Old plugin removed. New code installs via pip."
+fi
+# If no legacy structure → clean install or modern upgrade, proceed normally
+
 # 🔔 AUTO-UPDATE CHECK: Compare local version with GitHub latest
 LOCAL=$(pip show hermes-nexus-memory 2>/dev/null | grep Version | cut -d' ' -f2)
 REMOTE=$(curl -s https://api.github.com/repos/Neboy72/hermes-nexus-memory/releases/latest 2>/dev/null \
