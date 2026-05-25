@@ -10,7 +10,7 @@ Nexus Memory fixes that. **Permanently.**
 [![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
-[![Version](https://img.shields.io/badge/version-1.6.1-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
+[![Version](https://img.shields.io/badge/version-1.7.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
 > ⭐ **If this project helps your agent remember — drop a star so others find it too. Takes 2 seconds.**
 
@@ -30,6 +30,14 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 ---
 
 ## What's New
+
+### v1.7.0
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 📅 **Memory Expiry** | 3 policies: `static` (never), `normal` (90d), `volatile` (7d). DriftDetector flags expired entries. `last_confirmed_at` extends life. `valid_until` overrides policy. | Stale configs, old paths and dead API keys finally get caught — Provenance said *where* from, Expiry says *when* done |
+| 📊 **Tiered Enrichment** | `nexus/enrich.py` — 3 tiers: T1 (store), T2 (+keywords), T3 (+linking). Hybrid decision: caller override → importance → category → content heuristics → T1 default | Low-value logs stay lean, critical facts get full enrichment — no wasted compute on noise |
+| 🧪 **29 Unit Tests** | `tests/test_health.py` (16) + `tests/test_enrich.py` (13) — policy logic, timezone safety, valid_until override, enrichment heuristics, keyword extraction | Each release is verified at both module and integration level |
 
 ### v1.6.1
 

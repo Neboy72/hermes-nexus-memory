@@ -95,7 +95,7 @@ fi
 pip install -e ~/.hermes/hermes-nexus-memory[all]
 ```
 
-### Step 2b: Upgrade from v1.4.x to v1.5.0 (Existing Installation)
+### Step 2b: Upgrade (Existing Installation)
 
 **Only follow this if Step 0 detected an existing Nexus installation.**
 
@@ -146,9 +146,11 @@ pip install bm25s
 
 This enables `HybridRetriever` automatically. No extra config needed.
 
-### Step 5: Drift Detection (Recommended)
+### Step 5: Drift Detection + Memory Expiry (Recommended)
 
-**Do NOT skip this.** Memory goes stale. Without drift detection, your agent will trust outdated facts. Set up a nightly cron job:
+**Do NOT skip this.** Memory goes stale. Without drift detection, your agent will trust outdated facts. New in v1.7.0: memories now have a shelf life — see **Memory Expiry** in the What's New section.
+
+Set up a nightly cron job:
 
 ```bash
 hermes cron add \
@@ -188,8 +190,13 @@ hermes status | grep -i nexus
 
 # Test memory save and retrieve
 # In the next agent session, try:
-# nexus_remember(content="Nexus Memory v1.1.0 installed successfully", category="fact")
+# nexus_remember(content="Nexus Memory v1.7.0 installed successfully", category="fact", tier=2)
+# nexus_remember(content="Primary API key goes in .env", category="config", tier=3)
 # nexus_search(query="installed successfully", limit=1)
+
+# Note: v1.7.0 introduces tiered enrichment and memory expiry.
+# - Set tier=2 or tier=3 for important memories (default T1 = raw storage)
+# - Expiry policies: static / normal (90d) / volatile (7d) — set via expiry_policy in payload
 ```
 
 ### Step 8: Report to User
@@ -197,11 +204,13 @@ hermes status | grep -i nexus
 After installation, report:
 
 ```
-✅ Nexus Memory v1.5.0 installed
+✅ Nexus Memory v1.7.0 installed
 
 • Embedding: <provider chosen>
 • Hybrid Retrieval: <installed/skipped>
 • Drift Detection: <cron set up / manual only>
+• Memory Expiry: ✅ active (policies: static/normal/volatile)
+• Tiered Enrichment: ✅ active (auto, T1 default)
 • Qdrant: running on localhost:6333
 • Auto-Update: ✅ I'll check for new versions at startup
 
@@ -216,7 +225,7 @@ Wenn ja, sagt er dem User Bescheid — kein Watch, keine E-Mail, nichts manuelle
 Der Check läuft automatisch über den Code in **Step 0** oben. Sobald ein neues Release
 erscheint, sieht der User:
 
-> 📢 New version v1.5.0 available (you have v1.4.0). Update by saying: upgrade nexus memory
+> 📢 New version v1.7.0 available (you have v1.6.1). Update by saying: upgrade nexus memory
 
 Ein Upgrade macht der Bot dann selbstständig (Step 2b). Kein manuelles Eingreifen nötig.
 
@@ -238,7 +247,9 @@ Ein Upgrade macht der Bot dann selbstständig (Step 2b). Kein manuelles Eingreif
 
 - **Persistent memory** — your agent remembers across sessions
 - **Hybrid search** — keyword + semantic = better results, poison-resistant
-- **Drift detection** — stale memories get flagged automatically
+- **Drift detection** — stale + expired memories get flagged automatically
+- **Memory expiry** — set policies: static (never), normal (90d), volatile (7d)
+- **Tiered enrichment** — automatically tags important memories (T2/T3) for deeper analysis
 - **Source tier boosting** — your own data ranks higher than random internet content
 - **3 embedding backends** — from zero-config local to cloud-powered best quality
 
