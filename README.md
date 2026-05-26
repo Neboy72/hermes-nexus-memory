@@ -329,11 +329,14 @@ One plugin. Three backends. Same tools, same API, same results.
 | 🔧 **Auto-Fix / Consolidation** | ❌ | ❌ | ❌ | **✅ `nexus_consolidate()`** |
 | 📅 **Memory Expiry** | ❌ | ❌ | ❌ | **✅ 3 policies (static/normal/volatile)** |
 | 📊 **Tiered Enrichment** | ❌ | ❌ | ❌ | **✅ Auto T1/T2/T3 Heuristik** |
+| 🧬 **Fact Lifecycle Model** | ❌ | ❌ | ❌ | **✅ Append-only: pending → canonical \| deprecated \| rolled_back** |
+| 🔄 **Staging + Rollback** | ❌ | ❌ | ❌ | **✅ `create_pending()` → `promote()` → `deprecate()` → `rollback()`** |
+| 🎯 **Skill Export** | ❌ | ❌ | ❌ | **✅ `nexus-export --deploy` (Facts → SKILL.md)** |
 | External APIs | Gemini required | None | Multiple cloud APIs | **Optional** |
 | Code size | ~50K TypeScript | ~1.5K Python | Varies | **~2.2K Python** |
 | Setup time | 30+ min + OAuth | `hermes memory setup` | Cloud account | **1 command** |
 
-**Nexus is the only memory plugin with drift detection, provenance, authority chain, memory expiry, and tiered enrichment — plus hybrid retrieval, all in one package.**
+**Nexus is the only memory plugin with drift detection, provenance, authority chain, memory expiry, tiered enrichment, fact lifecycle model, staging/rollback, and skill export — plus hybrid retrieval, all in one package.**
 
 ---
 
