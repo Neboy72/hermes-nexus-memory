@@ -45,7 +45,14 @@ from nexus.staging import (
     get_fact_history,
 )
 
-__version__ = "1.8.0"
+# ── Skill Export API (v1.9.0+) ─────────────────────────────────────────────
+from nexus.export import (
+    export_skill,
+    search_knowledge,
+    list_topics,
+)
+
+__version__ = "1.9.0"
 
 _logger = logging.getLogger(__name__)
 
