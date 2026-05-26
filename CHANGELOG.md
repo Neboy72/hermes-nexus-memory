@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.0.0] — 2026-05-26
+
+### Added
+
+- **SkillGraph Edge Store — `nexus/graph/schema.py` + `store.py`** — SQLite-backed directed graph:
+  - `EdgeRelation` enum: depends_on, extends, contradicts, required_by, references
+  - `EdgeStatus` enum: active, rejected, deprecated
+  - `add_edge()` with relation validation + duplicate check via `has_active_edge()`
+  - `reject()` / `deprecate()` with COALESCE for optional reason
+  - Partial unique index `WHERE status='active'` prevents duplicate active edges
+- **Graph Query Layer — `nexus/graph/graph.py`** — NetworkX in-memory cache:
+  - `get_related(fact_id, relation, depth)` — BFS with depth-limit
+  - `get_path(source, target)` — DFS chain detection
+  - Symmetric `contradicts` edges auto-inserted on creation
+  - `get_stats()` — active/inactive/deprecated edge counts
+  - Incremental updates: `_add_edge_to_graph()`, `_remove_edge_from_graph()`
+  - `_rebuild_from_store()` — one-time full rebuild at `initialize()`
+- **165 Unit Tests (35 new)** — `tests/test_graph.py`: schema validation, edge CRUD, lifecycle (reject/deprecate/reactivate), BFS depth-limiting, DFS chains, persistence, get_stats coverage
+
 ## [1.9.0] — 2026-05-26
 
 ### Added

@@ -147,7 +147,7 @@ This enables `HybridRetriever` automatically. No extra config needed.
 
 ### Step 5: Drift Detection + Memory Expiry (Recommended)
 
-**Do NOT skip this.** Memory goes stale. Without drift detection, your agent will trust outdated facts. New in v1.9.0: Skill Export — turn canonical facts into ready-to-use SKILL.md files. See **What's New** in the README.
+**Do NOT skip this.** Memory goes stale. Without drift detection, your agent will trust outdated facts. See **What's New** in the README for the latest features (v2.0.0: SkillGraph Edge Store + Query Layer, v1.9.0: Skill Export — turn canonical facts into ready-to-use SKILL.md files).
 
 Set up a nightly cron job:
 
@@ -193,6 +193,9 @@ hermes status | grep -i nexus
 # nexus_remember(content="Primary API key goes in .env", category="config", tier=3)
 # nexus_search(query="installed successfully", limit=1)
 
+# Note: v2.0.0 introduces SkillGraph — Edge Store + Graph Query Layer for fact relationships.
+# - nexus/graph/ module: add_edge(), get_related(), get_path() via BFS/DFS
+# - SQLite-backed with NetworkX in-memory cache, incremental updates
 # Note: v1.9.0 introduces Skill Export — turn canonical facts into SKILL.md files.
 # - Run: nexus-export --list (see exportable topics)
 # - Run: nexus-export --skill topic-name --deploy (write to ~/.hermes/skills/)
@@ -206,7 +209,7 @@ hermes status | grep -i nexus
 After installation, report:
 
 ```
-✅ Nexus Memory v1.9.0 installed
+✅ Nexus Memory v2.0.0 installed
 
 • Embedding: <provider chosen>
 • Hybrid Retrieval: <installed/skipped>
@@ -227,7 +230,7 @@ If one is found, it tells the user — no watch, no email, nothing manual needed
 The check runs automatically via the code in **Step 0** above. When a new release
 appears, the user sees:
 
-> 📢 New version v1.8.0 available (you have v1.6.1). Update by saying: upgrade nexus memory
+> 📢 New version v2.0.0 available (you have v1.9.0). Update by saying: upgrade nexus memory
 
 The bot then performs the upgrade on its own (Step 2b). No manual intervention needed.
 
@@ -243,7 +246,7 @@ The bot then performs the upgrade on its own (Step 2b). No manual intervention n
 | `bm25s` import error | `pip list \| grep bm25s` | `pip install bm25s` |
 | Hybrid not activating | Check `nexus.retrieval` imports | bm25s must be installed |
 
-**Upgrade from v1.7.x → v1.8.0+:**
+**Upgrade from v1.7.x → v2.0.0+:**
 If you are upgrading an existing Nexus installation with real Qdrant data, legacy entries lack v1.8.0 lifecycle fields (`fact_id`, `status`, `content_hash`). The system handles them transparently via fallback (treats them as `canonical`). For optimal filtering and export accuracy, run the optional one-time migration:
 ```bash
 python3 ~/.hermes/hermes-nexus-memory/scripts/migrate-lifecycle.py

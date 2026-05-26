@@ -10,7 +10,7 @@ Nexus Memory fixes that. **Permanently.**
 [![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
-[![Version](https://img.shields.io/badge/version-1.9.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
+[![Version](https://img.shields.io/badge/version-2.0.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
 > ⭐ **If this project helps your agent remember — drop a star so others find it too. Takes 2 seconds.**
 
@@ -30,6 +30,18 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 ---
 
 ## What's New
+
+### v2.0.0 — SkillGraph: Edge Store + Query Layer 🔗
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 🔗 **SkillGraph Edge Store** | SQLite-backed directed graph — `add_edge()` with 5 relation types (`depends_on`, `extends`, `contradicts`, `required_by`, `references`), 3 lifecycle statuses (`active`, `rejected`, `deprecated`), partial unique index `WHERE status='active'` | **Store WHY facts relate, not just WHAT they are.** No duplicate active edges. Full audit trail through lifecycle states. |
+| 🕸️ **Graph Query Layer** | NetworkX in-memory cache — BFS with depth-limit (`get_related()`), DFS chain detection (`get_path()`), symmetric `contradicts` edges auto-inserted. Incremental updates — no full rebuild on mutation. | Query relationships in milliseconds. Multi-hop paths for reasoning chains. Zero-cost updates after one-time startup rebuild. |
+| 🏛️ **Schema-First Design** | `EdgeRelation` enum + `EdgeStatus` enum in `schema.py`. SQLite = Source of Truth, NetworkX = readonly cache. `write_to_store()` before `sync_to_cache()`. | **Data integrity before performance.** The schema is the contract — everything validates against it before it touches the store. |
+| 🔄 **Incremental Graph Updates** | `_add_edge_to_graph()` / `_remove_edge_from_graph()` update NetworkX in-place. Full `_rebuild()` only on `initialize()`. | One-time rebuild at startup, then zero-cost incremental. No full-graph-scan on every `add_edge()`. |
+| 🧪 **165 Unit Tests (35 new)** | `tests/test_graph.py` — SQLite schema validation, edge CRUD, lifecycle (reject/deprecate/reactivate), BFS depth-limiting, DFS chains, persistence, `get_stats()` coverage. | Verified on Python 3.12 — 165/165 pass. |
+
+Install: `pip install --upgrade hermes-nexus-memory`
 
 ### v1.9.0 — Skill Export 🎯
 
@@ -332,6 +344,7 @@ One plugin. Three backends. Same tools, same API, same results.
 | 🧬 **Fact Lifecycle Model** | ❌ | ❌ | ❌ | ❌ | **✅ Append-only: pending → canonical \| deprecated \| rolled_back** |
 | 🔄 **Staging + Rollback** | ❌ | ❌ | ❌ | ❌ | **✅ `create_pending()` → `promote()` → `deprecate()` → `rollback()`** |
 | 🎯 **Skill Export** | ❌ | ❌ | ❌ | ❌ | **✅ `nexus-export --deploy` (Facts → SKILL.md)** |
+| 🔗 **SkillGraph (Edge Store)** | ❌ | ❌ | ❌ | ❌ | **✅ SQLite + NetworkX — 5 relation types, BFS/DFS, incremental updates** |
 | 🌐 External APIs | Gemini required | None | Cloud API required | Cloud / PostgreSQL | **Optional** |
 | 📦 Code size | ~50K TypeScript | ~1.5K Python | Managed service | Managed service | **~2.2K Python** |
 | ⏱️ Setup time | 30+ min + OAuth | 1 command | API key + signup | Postgres + pgvector | **1 command** |
