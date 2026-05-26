@@ -72,18 +72,18 @@
 
 ### Added
 
-- **Named Entity Matching** — Factual-Signal (`_signal_factual`) von Wort-Overlap auf Named Entity Extraction umgestellt. Erkennt 30+ technische Fachbegriffe (Nexus, Qdrant, Voyage, BM25, GPT, RAG, etc.) statt einfacher Wörter. → schärfere Halluzinations-Erkennung
-- **Why-Hints** — `nexus-confidence --pretty` zeigt jetzt pro Signal eine verständliche Erklärung: „Query passt gut zu den Chunks“, „Fachbegriffe fehlen in den Quell-Chunks“, etc.
-- **Stanford-CS229-Why-Hinweis** — Modul-Docstring erklärt warum Grounding nötig ist (SFT trainiert Plausibilität statt Wahrheit)
+- **Named Entity Matching** — Factual-Signal (`_signal_factual`) migrated from word-overlap to named entity extraction. Detects 30+ technical terms (Nexus, Qdrant, Voyage, BM25, GPT, RAG, etc.) instead of simple words. → sharper hallucination detection
+- **Why-Hints** — `nexus-confidence --pretty` now shows an understandable explanation per signal: "Query fits the chunks well", "Technical terms missing from source chunks", etc.
+- **Stanford-CS229-Why-Note** — Module docstring explains why Grounding is necessary (SFT trains plausibility, not truth)
 
 ### Changed
 
-- **Grounding Rebranding** — `ConfidenceScorer` → `GroundingScorer`, `ConfidenceReport` → `GroundingReport`, `report.confidence` → `report.grounding`. Konsequente Terminologie: Es misst Quellenabstützung, nicht Modell-Vertrauen.
-- **CLI Rebranding** — `bin/nexus-confidence` Importe, Labels und Ausgabe auf Grounding umgestellt
+- **Grounding Rebranding** — `ConfidenceScorer` → `GroundingScorer`, `ConfidenceReport` → `GroundingReport`, `report.confidence` → `report.grounding`. Consistent terminology: it measures source grounding, not model confidence.
+- **CLI Rebranding** — `bin/nexus-confidence` imports, labels and output updated to Grounding
 
 ### Fixed
 
-- **Factual-Signal** — Alte Logik erkannte nur Stopwort-gefilterte Einzelwörter. Neue Logik matched technische Named Entities präziser.
+- **Factual-Signal** — Old logic only recognized stopword-filtered single words. New logic matches technical named entities more precisely.
 
 ### Acknowledgements
 
@@ -119,39 +119,39 @@
 
 ### Added
 
-- **Multi-Level Provenance** — Vier Ebenen von Provenance für jeden Memory-Eintrag:
+- **Multi-Level Provenance** — Four levels of provenance for every memory entry:
 
-  **Level 1 — Source:** Automatisches Tracking woher ein Fakt kommt.
-  - `attach_source(session_id, source_type, created_by)` — baut Provenance-Metadaten
-  - `format_source(provenance)` — menschenlesbare Anzeige: "🟢 Chat by Kiosha (2026-05-23)"
-  - `SOURCE_TYPES` — Vertrauens-Ranking: chat (1.0) > ingest (0.9) > cron (0.8) > manual (0.7) > inferred (0.5) > unknown (0.3)
-  - Neue Parameter für `nexus_remember()`: `provenance`, `created_by`, `session_id`, `source_type`
-  - Legacy-Einträge ohne Provenance bleiben lesbar (`format_source(None)` → `❓ Unknown origin`)
+  **Level 1 — Source:** Automatic tracking of where a fact came from.
+  - `attach_source(session_id, source_type, created_by)` — builds provenance metadata
+  - `format_source(provenance)` — human-readable display: "🟢 Chat by Kiosha (2026-05-23)"
+  - `SOURCE_TYPES` — trust ranking: chat (1.0) > ingest (0.9) > cron (0.8) > manual (0.7) > inferred (0.5) > unknown (0.3)
+  - New parameters for `nexus_remember()`: `provenance`, `created_by`, `session_id`, `source_type`
+  - Legacy entries without provenance remain readable (`format_source(None)` → `❓ Unknown origin`)
 
-  **Level 2 — Corroboration:** Welche Einträge bestätigen oder widersprechen sich.
-  - `find_corroboration(content)` — Keyword-Overlap-Suche nach bestätigenden Einträgen
-  - `corroborate_entry(id_a, id_b)` — bidirektionales Verlinken + Confidence-Rekalibrierung
+  **Level 2 — Corroboration:** Which entries confirm or contradict each other.
+  - `find_corroboration(content)` — keyword-overlap search for corroborating entries
+  - `corroborate_entry(id_a, id_b)` — bidirectional linking + confidence recalibration
 
-  **Level 3 — Bi-temporal (erweitert):** Zusätzlich zu `valid_from`/`valid_until`:
-  - `modified_at` / `modified_by` — automatisch gesetzt bei jedem `nexus_update()` (Level 3)
-  - `nexus_update()` neuer Parameter: `modified_by`
-  - Legacy-Einträge bekommen beim ersten Update automatisch Basisdaten
+  **Level 3 — Bi-temporal (extended):** Beyond `valid_from`/`valid_until`:
+  - `modified_at` / `modified_by` — automatically set on every `nexus_update()` (Level 3)
+  - `nexus_update()` new parameter: `modified_by`
+  - Legacy entries receive baseline data on first update automatically
 
-  **Level 4 — Dependency Graph:** Was bricht wenn dieser Fakt falsch ist.
-  - `build_dependency_graph(point_id)` — rekursive Traversierung von `depends_on`/`dependents`
-  - `depends_on` / `dependents` — Listen von Point-IDs
-  - `criticality` — Anzahl der Einträge die von diesem Fakt abhängen
-  - `grounded` — Boolean: direkt beobachtet (True) oder abgeleitet (False)
-  - `max_depth=3` Schutz vor Endlos-Rekursion
+  **Level 4 — Dependency Graph:** What breaks if this fact is wrong.
+  - `build_dependency_graph(point_id)` — recursive traversal of `depends_on`/`dependents`
+  - `depends_on` / `dependents` — lists of point IDs
+  - `criticality` — number of entries that depend on this fact
+  - `grounded` — boolean: directly observed (True) or inferred (False)
+  - `max_depth=3` protection against infinite recursion
 
-- **Neues Modul:** `nexus/provenance/__init__.py` — 14 KB, vollständige Typannotationen
+- **New Module:** `nexus/provenance/__init__.py` — 14 KB, full type annotations
 
-- **UUID-Auto-Generierung** — `nexus_remember()` erzeugt automatisch eine UUID wenn keine Point-ID übergeben wird (fix für Qdrant's `null`-ID-Ablehnung)
+- **UUID Auto-Generation** — `nexus_remember()` auto-generates a UUID when no point ID is passed (fix for Qdrant's `null`-ID rejection)
 
 ### Changed
 
-- `nexus_remember()` erweiterte Signatur: `provenance`, `created_by`, `session_id`, `source_type`
-- `nexus_update()` erweiterte Signatur: `modified_by`
+- `nexus_remember()` extended signature: `provenance`, `created_by`, `session_id`, `source_type`
+- `nexus_update()` extended signature: `modified_by`
 - Version bumped from `1.4.0-dev` to `1.4.0`
 
 ### Acknowledgements
