@@ -44,8 +44,8 @@ Install: `pip install hermes-nexus-memory[hybrid]`
 
 | Feature | What it does | Why it matters |
 |---------|-------------|---------------|
-| 🔍 **Provenance Scan** | `scan_provenance()` scrollt alle Qdrant-Entries und zeigt Source-Typen, Confidence-Verteilung, Criticality-Marker | Transparenz über die Herkunft jeder Memory — wichtig für Audits und Debugging |
-| 🔗 **Wikilink Orphan Detection** | `find_wikilink_orphans()` findet `[[wikilinks]]` die nirgends auflösen — backtick-aware, kein Rauschen | Stellt sicher dass dein Wiki keine toten Links hat |
+| 🔍 **Provenance Scan** | `scan_provenance()` scrolls all Qdrant entries and reports source types, confidence distribution, criticality markers | Full transparency on where every memory comes from — essential for audits and debugging |
+| 🔗 **Wikilink Orphan Detection** | `find_wikilink_orphans()` finds `[[wikilinks]]` that don't resolve anywhere — backtick-aware, no noise | Ensures your wiki has no dead links |
 
 ### v1.7.0
 

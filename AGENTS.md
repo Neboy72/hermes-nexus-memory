@@ -219,17 +219,17 @@ After installation, report:
 Tools available: nexus_search, nexus_remember, nexus_forget
 ```
 
-### Step 9: Auto-Update Check (Rundum-Sorglos)
+### Step 9: Auto-Update Check (Hassle-Free)
 
-Der Bot prüft bei **jedem Session-Start** automatisch ob ein neues Release auf GitHub ist.
-Wenn ja, sagt er dem User Bescheid — kein Watch, keine E-Mail, nichts manuelles nötig.
+The bot checks for new releases on **every session start** automatically.
+If one is found, it tells the user — no watch, no email, nothing manual needed.
 
-Der Check läuft automatisch über den Code in **Step 0** oben. Sobald ein neues Release
-erscheint, sieht der User:
+The check runs automatically via the code in **Step 0** above. When a new release
+appears, the user sees:
 
 > 📢 New version v1.7.1 available (you have v1.6.1). Update by saying: upgrade nexus memory
 
-Ein Upgrade macht der Bot dann selbstständig (Step 2b). Kein manuelles Eingreifen nötig.
+The bot then performs the upgrade on its own (Step 2b). No manual intervention needed.
 
 ---
 
