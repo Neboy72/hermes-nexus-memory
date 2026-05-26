@@ -243,6 +243,13 @@ The bot then performs the upgrade on its own (Step 2b). No manual intervention n
 | `bm25s` import error | `pip list \| grep bm25s` | `pip install bm25s` |
 | Hybrid not activating | Check `nexus.retrieval` imports | bm25s must be installed |
 
+**Upgrade from v1.7.x → v1.8.0+:**
+If you're upgrading an existing Nexus installation (with real data in Qdrant), legacy entries don't have v1.8.0 lifecycle fields (`fact_id`, `status`, `content_hash`). The system handles them transparently via fallback (treats them as `canonical`). For optimal filtering and export accuracy, run the optional one-time migration:
+```bash
+python3 ~/.hermes/hermes-nexus-memory/scripts/migrate-lifecycle.py
+```
+This scrolls all points, adds lifecycle fields, and preserves existing payloads. Safe to run multiple times — skips already-migrated entries. Not required, but recommended for 200+ entry databases.
+
 ---
 
 ## What This Gives the User
