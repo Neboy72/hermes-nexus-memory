@@ -10,7 +10,7 @@ Nexus Memory fixes that. **Permanently.**
 [![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
-[![Version](https://img.shields.io/badge/version-1.7.1-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
+[![Version](https://img.shields.io/badge/version-1.7.2-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
 > ⭐ **If this project helps your agent remember — drop a star so others find it too. Takes 2 seconds.**
 
@@ -30,6 +30,15 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 ---
 
 ## What's New
+
+### v1.7.2
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 🔍 **Hybrid Search — `nexus_search_hybrid()`** | BM25 + Vector + RRF + Tier-Boost — eine Funktion für alle 3 Embedding-Provider: `voyage`, `sentence-transformers`, `ollama`. Auto-Detection aus config.yaml. Fallback auf BM25-only. | Anti-RAG-Poisoning: konkrete Keywords + semantische Suche kombiniert. Source-Tier-Boost pusht vertrauenswürdige Quellen nach oben. |
+| 🎯 **3 Embedding-Provider** | `voyage` (cloud, voyage-3-lite), `sentence-transformers` (lokal, all-MiniLM-L6-v2), `ollama` (lokal, nomic-embed-text) — universelle Embedding-Auswahl | Jeder Nutzer wählt was zu seinem Setup passt: Cloud-Qualität oder lokale Privatsphäre.|
+
+Install: `pip install hermes-nexus-memory[hybrid]`
 
 ### v1.7.1
 
