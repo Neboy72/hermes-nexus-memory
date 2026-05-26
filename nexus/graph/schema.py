@@ -128,11 +128,14 @@ CREATE TABLE IF NOT EXISTS edges (
     updated_at       TEXT NOT NULL,
     deprecated_at    TEXT,
     reason           TEXT,
-    metadata_json    TEXT,
-
-    -- Prevent duplicate active edges between the same pair
-    UNIQUE(source_fact_id, target_fact_id, relation, status)
+    metadata_json    TEXT
 );
+"""
+
+CREATE_EDGES_INDEX_ACTIVE_UNIQUE = """
+CREATE UNIQUE INDEX IF NOT EXISTS idx_edges_active_unique
+    ON edges(source_fact_id, target_fact_id, relation)
+    WHERE status = 'active';
 """
 
 CREATE_EDGES_INDEX_SOURCE = """
@@ -154,6 +157,7 @@ CREATE INDEX IF NOT EXISTS idx_edges_status
 def get_create_statements() -> list[str]:
     return [
         CREATE_EDGES_TABLE,
+        CREATE_EDGES_INDEX_ACTIVE_UNIQUE,
         CREATE_EDGES_INDEX_SOURCE,
         CREATE_EDGES_INDEX_TARGET,
         CREATE_EDGES_INDEX_STATUS,

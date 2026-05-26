@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Nexus Memory — Persistent vector memory for Hermes Agent.
 
 Three layers of intelligence:

@@ -1,10 +1,10 @@
+from __future__ import annotations
+
 """EdgeStore — SQLite-backed CRUD for SkillGraph edges.
 
 All mutations go through this class first (Source of Truth).
 NetworkX cache in ``graph.py`` is rebuilt from here.
 """
-
-from __future__ import annotations
 
 import json
 import logging
@@ -14,6 +14,7 @@ from typing import Any, Optional
 
 from nexus.graph.schema import (
     CREATE_EDGES_TABLE,
+    CREATE_EDGES_INDEX_ACTIVE_UNIQUE,
     CREATE_EDGES_INDEX_SOURCE,
     CREATE_EDGES_INDEX_TARGET,
     CREATE_EDGES_INDEX_STATUS,
@@ -69,6 +70,7 @@ class EdgeStore:
         """Create the edges table + indexes if they don't exist."""
         for stmt in (
             CREATE_EDGES_TABLE,
+            CREATE_EDGES_INDEX_ACTIVE_UNIQUE,
             CREATE_EDGES_INDEX_SOURCE,
             CREATE_EDGES_INDEX_TARGET,
             CREATE_EDGES_INDEX_STATUS,

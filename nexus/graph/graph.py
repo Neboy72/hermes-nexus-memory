@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """SkillGraph — NetworkX-accelerated edge queries over SQLite.
 
 Designed as a **cache / view** over the SQLite edge store.
@@ -9,8 +11,6 @@ Non-goals for v2.0.0:
   - Weighted / ranked path search
   - Graph analytics
 """
-
-from __future__ import annotations
 
 import logging
 from collections import deque
@@ -199,7 +199,33 @@ class SkillGraph:
 
         return []  # No path found
 
-    # ── Mutations (delegate to SQLite, then rebuild cache) ──────────────────
+    # ── Mutations (SQLite first, NetworkX incremental update) ─────────────────
+
+    def _add_edge_to_graph(self, edge: Edge) -> None:
+        """Add a single active edge to the NetworkX cache."""
+        self._graph.add_node(edge.source_fact_id)
+        self._graph.add_node(edge.target_fact_id)
+        rel = edge.relation
+        self._graph.add_edge(
+            edge.source_fact_id, edge.target_fact_id,
+            relation=rel, edge_id=edge.edge_id,
+        )
+        # Symmetric contradicts
+        if rel == EdgeRelation.CONTRADICTS.value:
+            self._graph.add_edge(
+                edge.target_fact_id, edge.source_fact_id,
+                relation=rel, edge_id=edge.edge_id,
+            )
+
+    def _remove_edge_from_graph(self, edge: Edge) -> None:
+        """Remove a single edge from the NetworkX cache."""
+        if not self._graph.has_node(edge.source_fact_id):
+            return
+        if self._graph.has_edge(edge.source_fact_id, edge.target_fact_id):
+            self._graph.remove_edge(edge.source_fact_id, edge.target_fact_id)
+        if edge.relation == EdgeRelation.CONTRADICTS.value:
+            if self._graph.has_edge(edge.target_fact_id, edge.source_fact_id):
+                self._graph.remove_edge(edge.target_fact_id, edge.source_fact_id)
 
     def add_edge(
         self,
@@ -209,7 +235,7 @@ class SkillGraph:
         reason: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> Edge:
-        """Add an edge via SQLite, then rebuild the NetworkX cache."""
+        """Add an edge via SQLite, then update NetworkX incrementally."""
         edge = self._store.add_edge(
             source_fact_id=source_fact_id,
             target_fact_id=target_fact_id,
@@ -217,19 +243,21 @@ class SkillGraph:
             reason=reason,
             metadata=metadata,
         )
-        self._rebuild()
+        self._add_edge_to_graph(edge)
         return edge
 
     def reject_edge(self, edge_id: str, reason: str | None = None) -> Edge | None:
-        """Reject an edge via SQLite, then rebuild the NetworkX cache."""
+        """Reject an edge via SQLite, then update NetworkX incrementally."""
         edge = self._store.reject_edge(edge_id, reason=reason)
-        self._rebuild()
+        if edge:
+            self._remove_edge_from_graph(edge)
         return edge
 
     def deprecate_edge(self, edge_id: str, reason: str | None = None) -> Edge | None:
-        """Deprecate an edge via SQLite, then rebuild the NetworkX cache."""
+        """Deprecate an edge via SQLite, then update NetworkX incrementally."""
         edge = self._store.deprecate_edge(edge_id, reason=reason)
-        self._rebuild()
+        if edge:
+            self._remove_edge_from_graph(edge)
         return edge
 
     # ── Stats ───────────────────────────────────────────────────────────────
