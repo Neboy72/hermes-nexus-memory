@@ -112,7 +112,6 @@ pip install -e ~/.hermes/hermes-nexus-memory[all]
 
 # Skip Step 3 — config already set, embedding provider already configured
 # Go directly to Step 4 (Hybrid Retrieval)
-```
 
 **Important:** Do NOT change the embedding provider or Qdrant collection during upgrade. The existing memories must be preserved.
 
@@ -148,7 +147,7 @@ This enables `HybridRetriever` automatically. No extra config needed.
 
 ### Step 5: Drift Detection + Memory Expiry (Recommended)
 
-**Do NOT skip this.** Memory goes stale. Without drift detection, your agent will trust outdated facts. New in v1.8.0: facts have an append-only lifecycle model (pending → canonical → deprecated/rolled_back) with audit trail. See **What's New** in the README.
+**Do NOT skip this.** Memory goes stale. Without drift detection, your agent will trust outdated facts. New in v1.9.0: Skill Export — turn canonical facts into ready-to-use SKILL.md files. See **What's New** in the README.
 
 Set up a nightly cron job:
 
@@ -194,9 +193,10 @@ hermes status | grep -i nexus
 # nexus_remember(content="Primary API key goes in .env", category="config", tier=3)
 # nexus_search(query="installed successfully", limit=1)
 
-# Note: v1.8.0 introduces fact lifecycle model, staging area, and append-only state machine.
-# - Run: from nexus.staging import create_pending, promote, list_pending, rollback
-# - Run: from nexus.lifecycle import FactVersion, FactStatus, CanonicalView
+# Note: v1.9.0 introduces Skill Export — turn canonical facts into SKILL.md files.
+# - Run: nexus-export --list (see exportable topics)
+# - Run: nexus-export --skill topic-name --deploy (write to ~/.hermes/skills/)
+# - Run: from nexus.export import export_skill, search_knowledge, list_topics
 # - Set tier=2 or tier=3 for important memories (default T1 = raw storage)
 # - Expiry policies: static / normal (90d) / volatile (7d) — set via expiry_policy in payload
 ```
@@ -206,13 +206,13 @@ hermes status | grep -i nexus
 After installation, report:
 
 ```
-✅ Nexus Memory v1.8.0 installed
+✅ Nexus Memory v1.9.0 installed
 
 • Embedding: <provider chosen>
 • Hybrid Retrieval: <installed/skipped>
 • Drift Detection: <cron set up / manual only>
 • Memory Expiry: ✅ active (policies: static/normal/volatile)
-• Tiered Enrichment: ✅ active (auto, T1 default)
+• Skill Export: ✅ available (nexus-export CLI)
 • Qdrant: running on localhost:6333
 • Auto-Update: ✅ I'll check for new versions at startup
 

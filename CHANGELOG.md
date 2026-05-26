@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.9.0] — 2026-05-26
+
+### Added
+
+- **Skill Export — `nexus/export.py`** — Search → Cluster → Build → Write pipeline:
+  - `search_knowledge(topic, limit=20)` — Paginated scroll through all Qdrant entries, filters to canonical/legacy-only, matches topic against content text + category tags
+  - `cluster_facts(facts, name)` — Heuristic keyword classification: Steps, Pitfalls, Prerequisites, Verification sections
+  - `build_skill()` via `SkillCluster.to_skill()` — Template-based SKILL.md with frontmatter (name, description, tags, fact_ids), all 4 sections, dedup (max 15 items/section, 10 tags)
+  - Legacy-compatible: handles both v1.8.0 FactVersion dict-content and Hermes `user_content`/`assistant_content` formats
+  - Auto-cleanup: skips empty entries, removed duplicates by content key, sorts by recency
+- **nexus-export CLI** — Installed via `[project.scripts]` in pyproject.toml:
+  - `nexus-export --list` — Lists all categories with 3+ canonical facts in the database
+  - `nexus-export --skill name --topic topic --limit N` — Exports to `name.md` (preview mode)
+  - `nexus-export --skill name --deploy` — Writes directly to `~/.hermes/skills/name.md`
+  - `nexus-export --skill name --output /path/` — Custom output directory
+
 ## [1.8.0] — 2026-05-26
 
 ### Added

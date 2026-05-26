@@ -10,7 +10,7 @@ Nexus Memory fixes that. **Permanently.**
 [![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
-[![Version](https://img.shields.io/badge/version-1.8.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
+[![Version](https://img.shields.io/badge/version-1.9.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
 > ⭐ **If this project helps your agent remember — drop a star so others find it too. Takes 2 seconds.**
 
@@ -30,6 +30,17 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 ---
 
 ## What's New
+
+### v1.9.0 — Skill Export 🎯
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 🎯 **Skill Export** | `export_skill()` searches canonical facts by topic → clusters into Steps/Pitfalls/Prerequisites/Verification → generates complete `SKILL.md` with frontmatter, traceability, and structured instructions | **Turn learned facts into reusable agent skills.** No more manual SKILL.md editing — one command from Nexus to deployable skill. |
+| 🖥️ **nexus-export CLI** | `--list` shows exportable topics, `--skill name` exports as `.md`, `--deploy` writes directly to `~/.hermes/skills/`. Auto-installed via `pip install`. | Integrates directly with Hermes Skill system. `nexus-export --skill review-patterns --deploy` = skill ready next session. |
+| 🔍 **Legacy-Compat** | Handles both v1.8.0 FactVersion payloads (dict content) and legacy Hermes conversation format (`user_content` + `assistant_content`). Paginated scroll scans 200+ entries. | Works on existing 2000+ entry databases without migration. No data loss, no schema changes. |
+| 🧩 **Heuristic Clustering** | Classifies fact content by keyword patterns into Steps, Pitfalls, Prerequisites, Verification. Dedup by content-key, max 15 items per section, max 10 tags. Topic filter: content text + category tags. | Structured skills without LLM calls. Template-based generation is deterministic, fast, and zero-cost. |
+
+Install: `pip install --upgrade hermes-nexus-memory`
 
 ### v1.8.0 — Fact Lifecycle Model 🧬
 
@@ -358,4 +369,4 @@ MIT — use it, modify it, ship it.
 
 ---
 
-<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.8.0 — Fact Lifecycle Model + Append-Only State Machine</sub>
+<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.9.0 — Skill Export + Fact Lifecycle Model</sub>
