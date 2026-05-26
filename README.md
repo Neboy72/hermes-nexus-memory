@@ -40,7 +40,7 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 | 🔄 **Rollback** | `rollback()` creates a `rolled_back` marker + restores previous canonical. Both stay in append-only history. | Undo mistakes without losing evidence. The bad version persists as historical record. |
 | 🛡️ **Concurrency Guard** | `promote()` verifies `pending.supersedes == current_canonical.version_id` before writes. Stale pendings raise `ValueError` with clear message. | Prevents lost-update / fork scenarios when multiple processes stage against the same fact. |
 | 🚀 **Auto Collection Bootstrap** | `ensure_collections()` creates `hermes-memory-canonical` with correct 512D on first `create_pending()`/`promote()`. | No more schema/dimension crashes on first promote. |
-| 📋 **71 Unit Tests** | `tests/test_lifecycle.py` (60) + `tests/test_staging.py` (11) — state machine, concurrency guard, serialization, CanonicalView, collection bootstrap | Verified append-only semantics: content_hash locked at create, TTL excluded for deprecated/rolled_back, supersedes on version_id-level. |
+| 📋 **100 Unit Tests (71 new)** | `tests/test_lifecycle.py` (60) + `tests/test_staging.py` (11) — state machine, concurrency guard, serialization, CanonicalView, collection bootstrap. Existing tests: health (29) + enrich (13) all green. | Verified on Python 3.12 via Hermes venv — 100/100 pass. 2 benign SWIG deprecation-warnings from scikit-learn/sentence-transformers (upstream issue, not ours). |
 
 Install: `pip install --upgrade hermes-nexus-memory`
 
