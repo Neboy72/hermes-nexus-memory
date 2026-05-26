@@ -387,4 +387,4 @@ MIT — use it, modify it, ship it.
 
 ---
 
-<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.9.0 — Skill Export + Fact Lifecycle Model</sub>
+<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v2.0.0 — SkillGraph: Edge Store + Query Layer</sub>
