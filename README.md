@@ -317,12 +317,12 @@ One plugin. Three backends. Same tools, same API, same results.
 
 ## vs Other Memory Plugins
 
-| | agentmemory | Holographic | Mem0 / Honcho | **Nexus** 🏆 |
+| Feature | agentmemory | Holographic | Mem0 / Honcho | **Nexus** 🏆 |
 |---|---|---|---|---|
-| Semantic search | ✅ (Gemini API) | ❌ Hash-based | ✅ (Cloud API) | ✅ (local or cloud) |
-| **Hybrid retrieval** | ❌ | ❌ | ❌ | **✅ BM25 + Vector + RRF** |
-| **Drift detection** | ❌ | ❌ | ❌ | **✅ Scored 0–10** |
-| **Anti-poisoning** | ❌ | ❌ | ❌ | **✅ Source tiers** |
+| 🔍 Semantic search | ✅ (Gemini API) | ❌ Hash-based | ✅ (Cloud API) | ✅ (local or cloud) |
+| 🔀 **Hybrid retrieval** | ❌ | ❌ | ❌ | **✅ BM25 + Vector + RRF** |
+| 🩺 **Drift detection** | ❌ | ❌ | ❌ | **✅ Scored 0–10** |
+| 🛡️ **Anti-poisoning** | ❌ | ❌ | ❌ | **✅ Source tiers** |
 | 🔗 **Multi-Level Provenance** | ❌ | ❌ | ❌ | **✅ Source + Corroboration + Dependency Graph** |
 | 🗣️ **Authority Chain** | ❌ | ❌ | ❌ | **✅ 6-level priority resolution** |
 | ✅ **RAG Grounding Scoring** | ❌ | ❌ | ❌ | **✅ 5-signal evaluation** |
@@ -332,9 +332,9 @@ One plugin. Three backends. Same tools, same API, same results.
 | 🧬 **Fact Lifecycle Model** | ❌ | ❌ | ❌ | **✅ Append-only: pending → canonical \| deprecated \| rolled_back** |
 | 🔄 **Staging + Rollback** | ❌ | ❌ | ❌ | **✅ `create_pending()` → `promote()` → `deprecate()` → `rollback()`** |
 | 🎯 **Skill Export** | ❌ | ❌ | ❌ | **✅ `nexus-export --deploy` (Facts → SKILL.md)** |
-| External APIs | Gemini required | None | Multiple cloud APIs | **Optional** |
-| Code size | ~50K TypeScript | ~1.5K Python | Varies | **~2.2K Python** |
-| Setup time | 30+ min + OAuth | `hermes memory setup` | Cloud account | **1 command** |
+| 🌐 External APIs | Gemini required | None | Multiple cloud APIs | **Optional** |
+| 📦 Code size | ~50K TypeScript | ~1.5K Python | Varies | **~2.2K Python** |
+| ⏱️ Setup time | 30+ min + OAuth | `hermes memory setup` | Cloud account | **1 command** |
 
 **Nexus is the only memory plugin with drift detection, provenance, authority chain, memory expiry, tiered enrichment, fact lifecycle model, staging/rollback, and skill export — plus hybrid retrieval, all in one package.**
 
