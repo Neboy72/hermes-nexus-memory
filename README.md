@@ -35,8 +35,8 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 
 | Feature | What it does | Why it matters |
 |---------|-------------|---------------|
-| 🔍 **Hybrid Search — `nexus_search_hybrid()`** | BM25 + Vector + RRF + Tier-Boost — eine Funktion für alle 3 Embedding-Provider: `voyage`, `sentence-transformers`, `ollama`. Auto-Detection aus config.yaml. Fallback auf BM25-only. | Anti-RAG-Poisoning: konkrete Keywords + semantische Suche kombiniert. Source-Tier-Boost pusht vertrauenswürdige Quellen nach oben. |
-| 🎯 **3 Embedding-Provider** | `voyage` (cloud, voyage-3-lite), `sentence-transformers` (lokal, all-MiniLM-L6-v2), `ollama` (lokal, nomic-embed-text) — universelle Embedding-Auswahl | Jeder Nutzer wählt was zu seinem Setup passt: Cloud-Qualität oder lokale Privatsphäre.|
+| 🔍 **Hybrid Search — `nexus_search_hybrid()`** | BM25 + Vector + RRF + Tier-Boost — one function for all 3 embedding providers: `voyage`, `sentence-transformers`, `ollama`. Auto-detection from config.yaml. Falls back to BM25-only. | Anti-RAG-poisoning: keyword precision + semantic search combined. Source-tier boost pushes trusted sources higher. |
+| 🎯 **3 Embedding-Providers** | `voyage` (cloud, voyage-3-lite), `sentence-transformers` (local, all-MiniLM-L6-v2), `ollama` (local, nomic-embed-text) — universal embedding choice | Choose what fits your setup: cloud quality or local privacy. |
 
 Install: `pip install hermes-nexus-memory[hybrid]`
 

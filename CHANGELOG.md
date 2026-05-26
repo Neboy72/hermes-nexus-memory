@@ -5,18 +5,18 @@
 ### Added
 
 - **Hybrid Search — `nexus_search_hybrid()`** — BM25 + Vector + RRF + Tier-Boost:
-  - Eine Funktion für alle 3 Embedding-Provider: `voyage`, `sentence-transformers`, `ollama`
-  - Auto-Detection des `embed_provider` aus Hermes `config.yaml`
-  - BM25-only Fallback wenn kein Embedding-Provider konfiguriert
-  - Source-Tier-Boost (tier1 x1.2, tier2 x1.0, tier3 x0.8)
+  - One function for all 3 embedding providers: `voyage`, `sentence-transformers`, `ollama`
+  - Auto-detection of `embed_provider` from Hermes `config.yaml`
+  - BM25-only fallback when no embedding provider is configured
+  - Source-tier boost (tier1 x1.2, tier2 x1.0, tier3 x0.8)
 - **3 Embedding-Provider Endpoints** — `_embed_voyage()`, `_embed_sentence_transformers()`, `_embed_ollama()`:
-  - Voyage: `voyage-3-lite` (512d), braucht `VOYAGE_API_KEY`
-  - Sentence-Transformers: `all-MiniLM-L6-v2` (384d), keine API-Key nötig
-  - Ollama: `nomic-embed-text`, braucht laufende Ollama-Instanz
+  - Voyage: `voyage-3-lite` (512d), needs `VOYAGE_API_KEY`
+  - Sentence-Transformers: `all-MiniLM-L6-v2` (384d), no API key required
+  - Ollama: `nomic-embed-text`, requires running Ollama instance
 
 ### Fixed
 
-- `pyproject.toml` optional dependency `hybrid` aktiviert BM25-Unterstützung (`pip install hermes-nexus-memory[hybrid]`)
+- `pyproject.toml` optional dependency `hybrid` enables BM25 support (`pip install hermes-nexus-memory[hybrid]`)
 
 ## [1.7.1] — 2026-05-25
 
