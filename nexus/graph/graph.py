@@ -241,3 +241,74 @@ class SkillGraph:
             "stored_edges": self._store.count_edges(status="active"),
             "db_path": self._store._db_path,
         }
+
+    # ── Chain Queries ───────────────────────────────────────────────────
+
+    def get_contradiction_chain(
+        self,
+        fact_id: str,
+        max_depth: int = 3,
+    ) -> list[dict]:
+        """Find all facts that contradict *fact_id*, directly or transitively.
+
+        Traverses ``contradicts`` edges outward.
+
+        Returns list of ``{"fact_id", "path", "relation", "edge_id"}``.
+        """
+        if not self._graph.has_node(fact_id):
+            return []
+
+        results: list[dict] = []
+        visited: set[str] = set()
+
+        def _dfs(current: str, path: list[str], depth: int) -> None:
+            if depth > max_depth:
+                return
+            for _, neighbor, data in self._graph.edges(current, data=True):
+                if data.get("relation") == EdgeRelation.CONTRADICTS.value and neighbor not in visited:
+                    visited.add(neighbor)
+                    new_path = path + [neighbor]
+                    results.append({
+                        "fact_id": neighbor,
+                        "path": list(new_path),
+                        "relation": EdgeRelation.CONTRADICTS.value,
+                        "edge_id": data.get("edge_id", ""),
+                    })
+                    _dfs(neighbor, new_path, depth + 1)
+
+        visited.add(fact_id)
+        _dfs(fact_id, [fact_id], 1)
+        return results
+
+    def get_support_chain(
+        self,
+        fact_id: str,
+        max_depth: int = 3,
+    ) -> list[dict]:
+        """Find supporting evidence chain for a fact.
+
+        Traverses ``supports`` edges outward from *fact_id*.
+
+        Returns list of ``{"fact_id", "path", "relation", "edge_id"}``.
+        """
+        if not self._graph.has_node(fact_id):
+            return []
+
+        results: list[dict] = []
+
+        def _dfs(current: str, path: list[str], depth: int) -> None:
+            if depth > max_depth:
+                return
+            for _, neighbor, data in self._graph.edges(current, data=True):
+                if data.get("relation") == EdgeRelation.SUPPORTS.value and neighbor not in {n for n in path}:
+                    new_path = path + [neighbor]
+                    results.append({
+                        "fact_id": neighbor,
+                        "path": list(new_path),
+                        "relation": EdgeRelation.SUPPORTS.value,
+                        "edge_id": data.get("edge_id", ""),
+                    })
+                    _dfs(neighbor, new_path, depth + 1)
+
+        _dfs(fact_id, [fact_id], 1)
+        return results

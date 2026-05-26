@@ -1,69 +1,186 @@
 """
-Nexus Memory Skill Export (v1.9.0).
+Nexus Memory Skill Export — Turn canonical facts into ready-to-use SKILL.md files.
 
-Searches canonical facts in Nexus Memory, clusters them by topic, and
-generates a ready-to-use SKILL.md file.
+v1.9.0: Search Nexus Memory → cluster related facts → generate Hermes-compatible
+SKILL.md with frontmatter, steps, pitfalls, prerequisites, and verification.
 
 Usage:
-    from nexus.export import export_skill
-    export_skill("review-patterns", topic="code review")
+    # CLI
+    nexus-export --skill "code-review" --deploy
+    nexus-export --list
 
-    # CLI:
-    # nexus-export --skill "review-patterns" --topic "code review"
+    # Python
+    from nexus.export import export_skill, search_knowledge, list_topics
+    result = export_skill("code-review", topic="code review patterns")
 """
 
 from __future__ import annotations
 
+import argparse
 import json
-import logging
 import os
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Optional
+import sys
+import uuid
+from datetime import datetime, timezone
+from typing import Any
 
-import requests
 
-_logger = logging.getLogger(__name__)
+# ── Search ──────────────────────────────────────────────────────────────────
 
-# ── Constants ──────────────────────────────────────────────────────────────
 
-COLLECTION_ALL = "hermes-memory"
+def search_knowledge(
+    topic: str,
+    limit: int = 20,
+    qdrant_host: str = "localhost",
+    qdrant_port: int = 6333,
+    collection_name: str = "hermes-memory",
+) -> list[dict]:
+    """Search Nexus Memory for canonical facts related to *topic*.
 
-SKILL_TEMPLATE = """\
----
+    Uses hybrid search (BM25 + Vector + RRF) for relevance, then filters
+    to canonical-only facts via CanonicalView (v1.8.0 lifecycle).
+
+    Returns results ordered by RRF score, each with:
+        id, rrf_score, content, category, tier, fact_id, version_id
+    """
+    from nexus import nexus_search_hybrid
+
+    raw = nexus_search_hybrid(
+        query=topic,
+        top_k=limit,
+        qdrant_host=qdrant_host,
+        qdrant_port=qdrant_port,
+        collection_name=collection_name,
+    )
+
+    if not raw:
+        return []
+
+    results = []
+    for r in raw:
+        # Extract content — handle nested payload
+        payload = r.get("payload", r)
+        fact_id = payload.get("fact_id") or r.get("id", "")
+        content = payload.get("content") or payload.get("text") or r.get("text", "")
+
+        # Filter canonical-only (v1.8.0 lifecycle)
+        status = payload.get("status", "canonical")  # pre-v1.8.0 = canonical
+        if status not in ("canonical", "static"):
+            continue
+
+        # Filter out empty/noise
+        if not content or len(content.strip()) < 10:
+            continue
+
+        results.append({
+            "id": r.get("id", ""),
+            "rrf_score": r.get("rrf_score", 0.0),
+            "content": content.strip(),
+            "category": (payload.get("category") or "fact").lower(),
+            "tier": payload.get("tier", 1),
+            "fact_id": fact_id,
+            "version_id": payload.get("version_id", ""),
+        })
+
+    return results
+
+
+# ── Clustering ──────────────────────────────────────────────────────────────
+
+
+def cluster_facts(facts: list[dict]) -> dict[str, list[str]]:
+    """Group facts into SKILL.md sections based on category and content signals.
+
+    Returns dict with keys: steps, pitfalls, prerequisites, verification.
+    """
+    clusters: dict[str, list[str]] = {
+        "steps": [],
+        "pitfalls": [],
+        "prerequisites": [],
+        "verification": [],
+    }
+
+    for f in facts:
+        content = f.get("content", "").strip()
+        if not content:
+            continue
+        cat = (f.get("category") or "fact").lower()
+
+        # Categorize by category field
+        if cat in ("pattern", "procedure", "workflow", "step"):
+            clusters["steps"].append(content)
+        elif cat in ("lesson", "pitfall", "warning", "gotcha"):
+            clusters["pitfalls"].append(content)
+        elif cat in ("requirement", "prerequisite", "config", "setup", "install"):
+            clusters["prerequisites"].append(content)
+        elif cat in ("check", "verification", "test", "assertion", "validate"):
+            clusters["verification"].append(content)
+
+        # If category is generic "fact" or "decision", detect from content
+        elif cat in ("fact", "decision", "pattern"):
+            # Content-based heuristic
+            # Pitfalls FIRST — negation & warning keywords override verification
+            # (a fact saying "Don't use X — always check Y" is a pitfall, not verification)
+            low = content.lower()
+            if any(kw in low for kw in ("never", "don't", "avoid", "watch out", "⚠", "caution", "pitfall")):
+                clusters["pitfalls"].append(content)
+            elif any(kw in low for kw in ("verify", "check", "ensure", "validate", "test that", "assert")):
+                clusters["verification"].append(content)
+            elif any(kw in low for kw in ("need", "require", "prerequisite", "must have", "install", "setup")):
+                clusters["prerequisites"].append(content)
+            else:
+                clusters["steps"].append(content)
+
+    # Deduplicate
+    for key in clusters:
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for item in clusters[key]:
+            # Dedupe on normalized first 80 chars
+            norm = item[:80].strip().lower()
+            if norm not in seen:
+                seen.add(norm)
+                deduped.append(item)
+        clusters[key] = deduped
+
+    return clusters
+
+
+# ── SKILL.md Generator ─────────────────────────────────────────────────────
+
+
+SKILL_TEMPLATE = """---
 name: {name}
-description: "{description}"
-tags: {tags}
+description: >-
+  {description}
 version: 1.0.0
-created: {created}
-source: "Auto-generated from Nexus Memory v1.9.0"
-facts:
-{fact_refs}
+author: auto-exported
+license: MIT
+platforms: [agent]
+tags: [{tags_str}]
+metadata:
+  hermes:
+    tags: [{tags_str}]
+    source: nexus-memory-export
+    exported: {date}
+    facts: [{fact_ids_str}]
 ---
 
-# {skill_title}
+# {title}
 
-{summary}
-
----
+{overview}
 
 ## Prerequisites
 
 {prerequisites}
 
----
-
 ## Steps
 
 {steps}
 
----
-
 ## Pitfalls
 
 {pitfalls}
-
----
 
 ## Verification
 
@@ -71,377 +188,213 @@ facts:
 
 ---
 
-Auto-generated from Nexus Memory v1.9.0
+*Auto-generated by Nexus Memory v1.9.0 Skill Export on {date}*
 """
 
 
-# ── Data Models ────────────────────────────────────────────────────────────
+def _format_section(items: list[str], default: str = "None yet documented.") -> str:
+    """Format a section as bullet list or default text."""
+    if not items:
+        return default
+    return "\n".join(f"- {item.strip()}" for item in items)
 
 
-@dataclass
-class SkillCluster:
-    """Clustered facts ready for SKILL.md generation."""
-    name: str
-    description: str = ""
-    tags: list[str] = field(default_factory=list)
-    steps: list[str] = field(default_factory=list)
-    pitfalls: list[str] = field(default_factory=list)
-    prerequisites: list[str] = field(default_factory=list)
-    verification: list[str] = field(default_factory=list)
-    fact_ids: list[str] = field(default_factory=list)
-    created: str = field(default_factory=lambda: datetime.now().isoformat()[:10])
+def _auto_describe(clusters: dict[str, list[str]]) -> str:
+    """Generate a description from clustered content."""
+    steps_count = len(clusters["steps"])
+    pitfalls_count = len(clusters["pitfalls"])
+    prereqs_count = len(clusters["prerequisites"])
 
-    def to_skill(self) -> str:
-        """Render as SKILL.md using the template."""
-        tags_str = json.dumps([t for t in self.tags if t])
-        fact_lines = []
-        for i, fid in enumerate(self.fact_ids[:20]):
-            fact_lines.append(f"  - {fid}")
-        fact_refs = "\n".join(fact_lines) if fact_lines else "  []"
+    parts = []
+    if steps_count:
+        parts.append(f"{steps_count} documented steps")
+    if pitfalls_count:
+        parts.append(f"{pitfalls_count} known pitfalls")
+    if prereqs_count:
+        parts.append(f"{prereqs_count} prerequisites")
 
-        def _bullets(items: list[str]) -> str:
-            if not items:
-                return "None identified yet."
-            return "\n".join(f"1. {item}" for item in items)
-
-        return SKILL_TEMPLATE.format(
-            name=self.name,
-            description=self.description or f"Workflow for {self.name}",
-            tags=tags_str,
-            created=self.created,
-            fact_refs=fact_refs,
-            skill_title=self.name.replace("-", " ").title(),
-            summary=self.description or "",
-            prerequisites=_bullets(self.prerequisites),
-            steps=_bullets(self.steps),
-            pitfalls=_bullets(self.pitfalls),
-            verification=_bullets(self.verification),
-        )
+    if parts:
+        return f"Skill with {', '.join(parts)}, auto-exported from Nexus Memory."
+    return "Auto-exported skill from Nexus Memory canonical facts."
 
 
-# ── Qdrant Helpers ─────────────────────────────────────────────────────────
+def _auto_tags(clusters: dict[str, list[str]], facts: list[dict]) -> list[str]:
+    """Extract relevant tags from fact categories and content."""
+    tags: set[str] = set()
+
+    # Categories become tags
+    for f in facts[:10]:
+        cat = (f.get("category") or "").lower()
+        if cat and cat != "fact":
+            tags.add(cat)
+
+    # Content-based tags
+    for item in clusters.get("pitfalls", [])[:5]:
+        low = item.lower()
+        if "deprecated" in low or "outdated" in low:
+            tags.add("deprecation")
+        if "config" in low:
+            tags.add("configuration")
+        if "api" in low:
+            tags.add("api")
+        if "test" in low:
+            tags.add("testing")
+        if "security" in low or "auth" in low:
+            tags.add("security")
+
+    if not tags:
+        tags.add("auto-exported")
+
+    return sorted(tags)
 
 
-def _qdrant_url(host: str, port: int, collection: str) -> str:
-    return f"http://{host}:{port}/collections/{collection}"
-
-
-# ── Search: Canonical Facts Only ───────────────────────────────────────────
-
-
-def search_knowledge(
-    topic: str,
-    limit: int = 20,
-    host: str = "localhost",
-    port: int = 6333,
-) -> list[dict]:
-    """Search for canonical facts matching a topic.
-
-    Queries the full-history collection, filtering to canonical status
-    and text-matching the topic against content.
-
-    Args:
-        topic: The topic to search for.
-        limit: Max results.
-        host: Qdrant host.
-        port: Qdrant port.
-
-    Returns:
-        List of fact payloads (already filtered to canonical).
-    """
-    url = f"{_qdrant_url(host, port, COLLECTION_ALL)}/points/scroll"
-
-    # Paginated scroll through all entries
-    all_points = []
-    offset = None
-    # Scan at least 200 entries to find topic matches across the collection
-    scroll_limit = max(limit * 10, 200)
-    fetch_limit = min(100, scroll_limit)
-    while len(all_points) < scroll_limit:
-        body = {
-            "limit": fetch_limit,
-            "with_payload": True,
-        }
-        if offset:
-            body["offset"] = offset
-        r = requests.post(url, json=body, timeout=10)
-        r.raise_for_status()
-        data = r.json().get("result", {})
-        batch = data.get("points", [])
-        if not batch:
-            break
-        all_points.extend(batch)
-        offset = data.get("next_page_offset")
-        if not offset:
-            break
-
-    facts = []
-    for p in all_points:
-        payload = p.get("payload", {})
-
-        # Filter: only canonical or legacy (no status = treat as canonical)
-        status = payload.get("status", "")
-        if status and status != "canonical":
-            continue
-
-        # Extract text from various content field formats
-        # Legacy: user_content / assistant_content (Hermes conversation format)
-        # v1.8.0: content (direct string or dict)
-        raw_content = payload.get("content", None)
-        if raw_content is None:
-            # Legacy format — combine user + assistant
-            text = "{} {}".format(
-                payload.get("user_content", ""),
-                payload.get("assistant_content", ""),
-            ).strip()
-        elif isinstance(raw_content, dict):
-            text = raw_content.get("content", str(raw_content))
-        else:
-            text = str(raw_content) if raw_content else ""
-
-        # Skip empty entries
-        if not text:
-            continue
-
-        text_lower = text.lower()
-        topic_lower = topic.lower()
-
-        # Simple topic filter: topic appears in content or tags
-        # Simple topic filter: topic appears in content or tags
-        topic_match = topic_lower in text_lower
-
-        # Also check tags/categories
-        if not topic_match:
-            tags = payload.get("tags", [])
-            categories = payload.get("category", "")
-            if isinstance(tags, list) and any(topic_lower in str(t).lower() for t in tags):
-                topic_match = True
-            if topic_lower in str(categories).lower():
-                topic_match = True
-
-        if topic_match:
-            facts.append({
-                "id": str(p.get("id", "")),
-                "fact_id": payload.get("fact_id", ""),
-                "version_id": payload.get("version_id", ""),
-                "content": text,
-                "category": payload.get("category", "fact"),
-                "tags": payload.get("tags", []),
-                "status": payload.get("status", "canonical"),
-                "created_at": payload.get("created_at", ""),
-                "provenance": payload.get("provenance", {}),
-            })
-
-    # Remove duplicates by content (keep newest)
-    seen_content: set[str] = set()
-    deduped = []
-    for f in sorted(facts, key=lambda x: x.get("created_at", ""), reverse=True):
-        c = f.get("content", "")
-        if c and c not in seen_content:
-            seen_content.add(c)
-            deduped.append(f)
-
-    return deduped[:limit]
-
-
-# ── Clustering ─────────────────────────────────────────────────────────────
-
-
-def cluster_facts(
-    facts: list[dict],
+def build_skill_md(
     name: str,
-) -> SkillCluster:
-    """Cluster facts into SKILL.md sections.
-
-    Uses heuristic extraction to identify:
-    - Steps: factual/actionable content
-    - Pitfalls: cautionary/failure patterns
-    - Prerequisites: dependency/setup facts
-    - Verification: confirmation/test patterns
+    clusters: dict[str, list[str]],
+    facts: list[dict],
+    description: str | None = None,
+    tags: list[str] | None = None,
+) -> str:
+    """Build a complete SKILL.md string from clustered facts.
 
     Args:
-        facts: List of fact payloads from search_knowledge().
-        name: Skill name.
+        name: Skill name (lowercase, hyphens)
+        clusters: Dict with steps, pitfalls, prerequisites, verification lists
+        facts: Original fact list (for tag extraction)
+        description: Optional override. Auto-generated if None.
+        tags: Optional tag list. Auto-extracted if None.
 
     Returns:
-        SkillCluster with populated sections.
+        Complete SKILL.md content (frontmatter + body)
     """
-    cluster = SkillCluster(name=name)
+    if description is None:
+        description = _auto_describe(clusters)
+    if tags is None:
+        tags = _auto_tags(clusters, facts)
 
-    pitfall_keywords = [
-        "achtung", "vorsicht", "fehler", "bug", "nicht", "fail",
-        "attention", "warning", "pitfall", "dont", "never", "avoid",
-        "problem", "issue", "broken", "crashes",
-    ]
-    prerequisite_keywords = [
-        "braucht", "benötigt", "muss", "erforderlich",
-        "need", "requires", "must", "prerequisite", "dependency",
-        "install", "setup", "config",
-    ]
-    verification_keywords = [
-        "prüfe", "test", "verifizier", "check",
-        "verify", "validate", "confirm", "ensure", "test",
-    ]
+    title = name.replace("-", " ").replace("_", " ").title()
+    tags_str = ", ".join(tags)
+    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    seen_contents: set[str] = set()
-    all_tags: set[str] = set()
-    full_text = []
+    # Fact IDs for traceability in frontmatter
+    fact_ids = [f.get("fact_id") or f.get("id", "") for f in facts if f.get("fact_id") or f.get("id")]
+    fact_ids_str = ", ".join(fact_ids[:20])
 
-    for fact in facts:
-        content = fact.get("content", "")
-        if not content or content in seen_contents:
-            continue
-        seen_contents.add(content)
+    # Overview — top 3 facts by RRF score as summary
+    top_facts = [f.get("content", "") for f in facts[:3] if f.get("content")]
+    overview_parts = top_facts[:2]  # keep it short, max 2
+    overview = "\n".join(f"- {p.strip()[:200]}" for p in overview_parts) if overview_parts else "Auto-exported from Nexus Memory."
 
-        category = fact.get("category", "")
-        tags = fact.get("tags", [])
-        if isinstance(tags, list):
-            all_tags.update(str(t) for t in tags)
-        all_tags.add(category)
-        full_text.append(content)
-
-        # Classify content
-        content_lower = content.lower()
-
-        # Check for pitfall keywords
-        if any(kw in content_lower for kw in pitfall_keywords):
-            cluster.pitfalls.append(content[:200])
-
-        # Check for prerequisite keywords
-        if any(kw in content_lower for kw in prerequisite_keywords):
-            cluster.prerequisites.append(content[:200])
-
-        # Check for verification keywords
-        if any(kw in content_lower for kw in verification_keywords):
-            cluster.verification.append(content[:200])
-
-        # Everything else is a step
-        cluster.steps.append(content[:200])
-
-        # Track fact_ids for traceability
-        fid = fact.get("fact_id") or fact.get("id", "")
-        if fid and fid not in cluster.fact_ids:
-            cluster.fact_ids.append(fid)
-
-    # Build description from first few facts
-    cluster.description = (
-        f"Auto-generated skill for {name}. "
-        f"Based on {len(facts)} canonical facts from Nexus Memory."
+    return SKILL_TEMPLATE.format(
+        name=name,
+        description=description,
+        tags_str=tags_str,
+        title=title,
+        overview=overview,
+        prerequisites=_format_section(clusters["prerequisites"]),
+        steps=_format_section(clusters["steps"]),
+        pitfalls=_format_section(clusters["pitfalls"]),
+        verification=_format_section(clusters["verification"]),
+        date=date_str,
+        fact_ids_str=fact_ids_str,
     )
 
-    # Collect tags
-    clean_tags = [t for t in all_tags if t and t != "unknown" and len(t) < 40]
-    cluster.tags = sorted(set(clean_tags))[:10]  # max 10 tags
 
-    # Merge overlapping sections (pitfall/step duplicates)
-    cluster.steps = _dedup_section(cluster.steps)
-
-    return cluster
+# ── Main Export ──────────────────────────────────────────────────────────────
 
 
-def _dedup_section(items: list[str]) -> list[str]:
-    """Deduplicate and trim section items."""
-    seen: set[str] = set()
-    result = []
-    for item in items:
-        # Use first 80 chars as dedup key to catch near-duplicates
-        key = item[:80]
-        if key not in seen:
-            seen.add(key)
-            result.append(item.strip())
-    return result[:15]  # Max 15 items per section
-
-
-# ── Export ─────────────────────────────────────────────────────────────────
+HERMES_SKILLS_DIR = os.path.expanduser("~/.hermes/skills")
 
 
 def export_skill(
     name: str,
     topic: str | None = None,
-    limit: int = 20,
     output_dir: str | None = None,
     deploy: bool = False,
-    host: str = "localhost",
-    port: int = 6333,
-) -> tuple[str, str]:
-    """Full export pipeline: search → cluster → render → write.
+    description: str | None = None,
+    tags: list[str] | None = None,
+    limit: int = 20,
+    **search_kw: Any,
+) -> dict:
+    """Search, cluster, and export a skill from Nexus Memory.
 
     Args:
-        name: Skill name (used as filename + SKILL.md identity).
-        topic: Search topic. Defaults to name if omitted.
-        limit: Max facts to include.
-        output_dir: Custom output directory.
-        deploy: If True, write to ~/.hermes/skills/ directly.
-        host: Qdrant host.
-        port: Qdrant port.
+        name: Skill name (used for filename and frontmatter)
+        topic: Search query. If None, uses *name* as topic.
+        output_dir: Output directory. Ignored if *deploy* is True.
+        deploy: If True, write directly to ``~/.hermes/skills/<name>/SKILL.md``.
+        description: Optional description override.
+        tags: Optional tag list override.
+        limit: Max facts to fetch.
+        **search_kw: Passed to ``search_knowledge()``.
 
     Returns:
-        (file_path, skill_content) tuple.
+        Dict with keys: name, topic, facts_found, steps, pitfalls, prerequisites,
+        verification, output_path, skill_md
     """
-    topic = topic or name
+    if topic is None:
+        topic = name
 
-    _logger.info("Searching for '%s' in Nexus Memory...", topic)
-    facts = search_knowledge(topic, limit=limit, host=host, port=port)
+    # 1. Search
+    facts = search_knowledge(topic, limit=limit, **search_kw)
 
-    if not facts:
-        _logger.warning("No canonical facts found for topic '%s'", topic)
-        return ("", "No canonical facts found for topic '{topic}'.")
+    # 2. Cluster
+    clusters = cluster_facts(facts)
 
-    _logger.info("Found %d canonical facts", len(facts))
-    cluster = cluster_facts(facts, name=name)
-    skill_content = cluster.to_skill()
+    # 3. Build SKILL.md
+    skill_md = build_skill_md(name, clusters, facts, description=description, tags=tags)
 
-    # Determine output path
+    # 4. Determine output path
     if deploy:
-        skills_dir = os.path.expanduser("~/.hermes/skills/")
-        os.makedirs(skills_dir, exist_ok=True)
-        file_path = os.path.join(skills_dir, f"{name}.md")
+        skill_dir = os.path.join(HERMES_SKILLS_DIR, name)
+        os.makedirs(skill_dir, exist_ok=True)
+        output_path = os.path.join(skill_dir, "SKILL.md")
     elif output_dir:
         os.makedirs(output_dir, exist_ok=True)
-        file_path = os.path.join(output_dir, f"{name}.md")
+        output_path = os.path.join(output_dir, f"{name}.md")
     else:
-        file_path = f"{name}.md"
+        output_path = os.path.join(os.getcwd(), f"{name}.md")
 
-    with open(file_path, "w") as f:
-        f.write(skill_content)
+    # 5. Write
+    with open(output_path, "w") as f:
+        f.write(skill_md)
 
-    _logger.info("Skill written to %s", file_path)
-    return file_path, skill_content
-
-
-# ── List Exportable Topics ─────────────────────────────────────────────────
+    return {
+        "name": name,
+        "topic": topic,
+        "facts_found": len(facts),
+        "clusters": {k: len(v) for k, v in clusters.items()},
+        "output_path": output_path,
+        "deployed": deploy,
+    }
 
 
 def list_topics(
+    qdrant_host: str = "localhost",
+    qdrant_port: int = 6333,
+    collection_name: str = "hermes-memory",
     min_facts: int = 3,
-    limit: int = 50,
-    host: str = "localhost",
-    port: int = 6333,
     max_scan: int = 2000,
 ) -> list[dict]:
-    """List topics that have enough canonical facts for a skill export.
+    """Discover categories with enough canonical facts for skill export.
 
-    Scans the all-history collection with offset-based pagination,
-    groups facts by category, and returns topics with >= min_facts entries.
+    Groups canonical + legacy (pre-v1.8.0, no status) facts by category
+    via paginated Qdrant scroll, returns categories with at least ``min_facts``
+    entries.
 
-    Filters to canonical and legacy entries (no status = canonical by default).
+    Uses the same inline canonical/legacy filtering as ``search_knowledge()``
+    for consistent lifecycle handling across both search and discovery.
 
-    Args:
-        min_facts: Minimum facts needed for a valid topic.
-        limit: Max topics to return.
-        host: Qdrant host.
-        port: Qdrant port.
-        max_scan: Max entries to scan (prevents runaway on large collections).
-
-    Returns:
-        List of {topic, count, sample_fact} dicts.
+    Returns list of dicts: category, fact_count, sample_content.
     """
-    url = f"{_qdrant_url(host, port, COLLECTION_ALL)}/points/scroll"
+    import requests
 
-    # Paginated scan — same pattern as search_knowledge()
+    # Paginated scroll — filter in Python for consistent legacy handling
+    scroll_url = f"http://{qdrant_host}:{qdrant_port}/collections/{collection_name}/points/scroll"
     all_points: list[dict] = []
     scroll_offset: str | None = None
     page_size = 200
+
     while len(all_points) < max_scan:
         body: dict[str, Any] = {
             "limit": page_size,
@@ -449,7 +402,7 @@ def list_topics(
         }
         if scroll_offset:
             body["offset"] = scroll_offset
-        r = requests.post(url, json=body, timeout=10)
+        r = requests.post(scroll_url, json=body, timeout=30)
         r.raise_for_status()
         data = r.json().get("result", {})
         batch = data.get("points", [])
@@ -460,114 +413,104 @@ def list_topics(
         if not scroll_offset:
             break
 
-    # Group by category (filtered: only canonical or legacy)
+    # Same inline filter as search_knowledge(): missing status = canonical
     groups: dict[str, list[str]] = {}
-    for p in all_points:
-        pl = p.get("payload", {})
-        status = pl.get("status", "")
-        if status and status != "canonical":
+    for point in all_points:
+        pl = point.get("payload", {})
+        status = pl.get("status", "canonical")
+        if status not in ("canonical", "static"):
             continue
-        cat = pl.get("category", "uncategorized")
-        content = pl.get("content", "")
-        if isinstance(content, dict):
-            text = content.get("content", "")
+        cat = (pl.get("category") or "uncategorized").lower()
+        raw_content = pl.get("content") or pl.get("text", "")
+        # Handle v1.8.0 content format (dict with nested "content" key)
+        if isinstance(raw_content, dict):
+            content = raw_content.get("content", str(raw_content))
         else:
-            text = content
-        if text:
-            if cat not in groups:
-                groups[cat] = []
-            groups[cat].append(text[:100])
+            content = str(raw_content) if raw_content else ""
+        if not content or len(content.strip()) < 10:
+            continue
+        if cat not in groups:
+            groups[cat] = []
+        groups[cat].append(content.strip())
 
-    topics = []
-    for topic, samples in sorted(groups.items(), key=lambda x: -len(x[1])):
-        if len(samples) >= min_facts:
-            topics.append({
-                "topic": topic,
-                "count": len(samples),
-                "sample": samples[0] if samples else "",
+    # Build result list
+    result = []
+    for category, contents in sorted(groups.items()):
+        if len(contents) >= min_facts:
+            sample = contents[0][:120] if contents else ""
+            result.append({
+                "category": category,
+                "fact_count": len(contents),
+                "sample": sample,
             })
-        if len(topics) >= limit:
-            break
 
-    return topics
+    return result
 
 
-# ── CLI Entry Point ────────────────────────────────────────────────────────
+# ── CLI ─────────────────────────────────────────────────────────────────────
 
 
 def cli_main() -> None:
-    """Entry point for the ``nexus-export`` CLI command.
-
-    Installed via ``[project.scripts]`` in ``pyproject.toml``.
-    """
-    import argparse
-    import logging
-    import sys
-
     parser = argparse.ArgumentParser(
-        description="Nexus Memory Skill Export — generate SKILL.md from canonical facts",
+        description="Nexus Memory Skill Export — turn canonical facts into SKILL.md",
     )
-    parser.add_argument(
-        "--skill", "-s", type=str, help="Skill name to export",
-    )
-    parser.add_argument(
-        "--topic", "-t", type=str, default=None,
-        help="Search topic (defaults to skill name)",
-    )
-    parser.add_argument(
-        "--limit", "-n", type=int, default=20,
-        help="Max facts to include (default: 20)",
-    )
-    parser.add_argument(
-        "--deploy", "-d", action="store_true",
-        help="Write directly to ~/.hermes/skills/",
-    )
-    parser.add_argument(
-        "--output", "-o", type=str, default=None,
-        help="Custom output directory",
-    )
-    parser.add_argument(
-        "--list", "-l", action="store_true",
-        help="List exportable topics from Nexus",
-    )
-    parser.add_argument(
-        "--quiet", "-q", action="store_true",
-        help="Suppress logging output",
-    )
+
+    # Mutually exclusive modes
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--list", action="store_true", help="List exportable topics")
+    mode.add_argument("--skill", type=str, help="Skill name to export")
+
+    # Export options
+    parser.add_argument("--topic", type=str, help="Search query (defaults to skill name)")
+    parser.add_argument("--deploy", action="store_true", help=f"Write to {HERMES_SKILLS_DIR}/<name>/SKILL.md")
+    parser.add_argument("--output", type=str, help="Output directory (ignored with --deploy)")
+    parser.add_argument("--description", type=str, help="Override auto-generated description")
+    parser.add_argument("--tags", type=str, help="Comma-separated tags (overrides auto-detection)")
+    parser.add_argument("--limit", type=int, default=20, help="Max facts to fetch (default: 20)")
+    parser.add_argument("--json", action="store_true", help="Output result as JSON")
 
     args = parser.parse_args()
 
-    if not args.quiet:
-        logging.basicConfig(level=logging.INFO, format="%(message)s")
-
     if args.list:
-        topics = list_topics()
-        if not topics:
-            print("No topics with enough canonical facts found.")
-            sys.exit(0)
-        print("Exportable Topics from Nexus Memory:")
-        print()
-        for t in topics:
-            print(f"  {t['topic']:25s} ({t['count']} facts)")
-        print()
-        print(f"Total: {len(topics)} topics with 3+ facts")
-        sys.exit(0)
+        topics = list_topics(min_facts=3)
+        if args.json:
+            print(json.dumps(topics, indent=2))
+        else:
+            print(f"\n🧠 Exportable Topics ({len(topics)} found):\n")
+            for t in topics:
+                cat = t.get("category", "?")
+                count = t.get("fact_count", 0)
+                sample = t.get("sample", "")
+                print(f"  • {cat:30s} ({count} facts)")
+                if sample:
+                    print(f"    ↳ {sample}")
+                print()
+        return
 
-    if not args.skill:
-        parser.print_help()
-        sys.exit(1)
+    # Export mode
+    tags = [t.strip() for t in args.tags.split(",")] if args.tags else None
 
-    file_path, content = export_skill(
+    result = export_skill(
         name=args.skill,
         topic=args.topic,
-        limit=args.limit,
         output_dir=args.output,
         deploy=args.deploy,
+        description=args.description,
+        tags=tags,
+        limit=args.limit,
     )
 
-    if not file_path:
-        print(f"No canonical facts found for '{args.topic or args.skill}'.")
-        sys.exit(1)
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        status_icon = "🗂️" if result.get("deployed") else "📄"
+        print(f"\n{status_icon} Skill exported: {result.get('name', '?')}\n")
+        print(f"  Topic:       {result.get('topic', '?')}")
+        print(f"  Facts found: {result.get('facts_found', 0)}")
+        clusters = result.get("clusters", {})
+        print(f"  Clusters:    {clusters}")
+        print(f"  Output:      {result.get('output_path', '?')}")
 
-    print(f"Skill written to: {file_path}")
-    print(f"  {len(content)} bytes, {content.count('1. ')} instructions")
+
+if __name__ == "__main__":
+    cli_main()
