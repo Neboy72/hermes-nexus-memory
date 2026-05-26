@@ -728,6 +728,156 @@ def nexus_resolve_conflict(
     }
 
 
+# ── Hybrid Search (BM25 + Vector + RRF + Tier-Boost) ───────────────────────
+
+
+def nexus_search_hybrid(
+    query: str,
+    embed_provider: str | None = None,
+    top_k: int = 10,
+    qdrant_host: str = "localhost",
+    qdrant_port: int = 6333,
+    collection_name: str = "hermes-memory",
+) -> list[dict]:
+    """Hybrid search across all memories: BM25 + Vector + RRF + Tier-Boost.
+
+    Supports all 3 embedding backends (auto-detected from config or overridden):
+
+    - ``"voyage"`` (cloud) — uses VOYAGE_API_KEY, best quality
+    - ``"sentence-transformers"`` (local) — ``all-MiniLM-L6-v2``, 384d, free
+    - ``"ollama"`` (local) — ``nomic-embed-text``, needs Ollama running
+
+    When *embed_provider* is ``None`` (default), tries to detect from
+    Hermes config (``config.yaml nexus-memory.embed_provider``), then
+    falls back to BM25-only (no vector component).
+
+    Returns a list of dicts ordered by hybrid relevance (RRF score,
+    descending). Each result has keys: id, rrf_score, tier, methods,
+    text.
+
+    Usage::
+
+        from nexus import nexus_search_hybrid
+
+        results = nexus_search_hybrid(
+            "send-gate encoding fix",
+            embed_provider="voyage",
+            top_k=5,
+        )
+        for r in results:
+            print(f"[{r['tier']}] {r['methods']} — {r['text'][:80]}")
+    """
+    from nexus.retrieval import HybridRetriever
+
+    retriever = HybridRetriever(
+        qdrant_host=qdrant_host,
+        qdrant_port=qdrant_port,
+        collection_name=collection_name,
+    )
+    retriever.index_memories()
+
+    # Embed query if a provider is specified or can be detected
+    query_vector = None
+    resolved_provider = embed_provider
+    if resolved_provider is None:
+        # Try detecting from Hermes config
+        try:
+            import os, yaml
+            cfg_path = os.path.expanduser("~/.hermes/config.yaml")
+            if os.path.exists(cfg_path):
+                with open(cfg_path) as f:
+                    cfg = yaml.safe_load(f)
+                resolved_provider = (
+                    cfg.get("nexus-memory", {})
+                    .get("embed_provider")
+                )
+        except Exception:
+            pass
+
+    if resolved_provider:
+        query_vector = _embed_query(query, resolved_provider)
+
+    return retriever.search_hybrid(query, query_vector=query_vector, top_k=top_k)
+
+
+def _embed_query(query: str, provider: str) -> list[float] | None:
+    """Embed a query string using the specified provider.
+
+    Returns a flat list of floats, or ``None`` if embedding fails.
+    """
+    provider = provider.strip().lower()
+
+    if provider == "voyage":
+        return _embed_voyage(query)
+    elif provider == "sentence-transformers":
+        return _embed_sentence_transformers(query)
+    elif provider == "ollama":
+        return _embed_ollama(query)
+    return None
+
+
+def _embed_voyage(query: str) -> list[float] | None:
+    """Embed via Voyage AI API."""
+    import os, requests
+
+    api_key = os.environ.get("VOYAGE_API_KEY")
+    if not api_key:
+        # Try .env
+        env_path = os.path.expanduser("~/.hermes/.env")
+        if os.path.exists(env_path):
+            with open(env_path) as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("VOYAGE_API_KEY="):
+                        api_key = line.split("=", 1)[1].strip().strip("\"'")
+                        break
+    if not api_key:
+        return None
+
+    try:
+        r = requests.post(
+            "https://api.voyageai.com/v1/embeddings",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={"input": [query], "model": "voyage-3-lite"},
+            timeout=10,
+        )
+        data = r.json()
+        return data["data"][0]["embedding"]
+    except Exception:
+        return None
+
+
+def _embed_sentence_transformers(query: str) -> list[float] | None:
+    """Embed locally via sentence-transformers (all-MiniLM-L6-v2, 384d)."""
+    try:
+        from sentence_transformers import SentenceTransformer
+
+        model = SentenceTransformer("all-MiniLM-L6-v2")
+        vec = model.encode(query)
+        return vec.tolist()
+    except Exception:
+        return None
+
+
+def _embed_ollama(query: str) -> list[float] | None:
+    """Embed via local Ollama (nomic-embed-text)."""
+    import requests
+
+    try:
+        r = requests.post(
+            "http://localhost:11434/api/embeddings",
+            json={"model": "nomic-embed-text", "prompt": query},
+            timeout=10,
+        )
+        data = r.json()
+        return data.get("embedding")
+    except Exception:
+        return None
+
+
 __all__ = [
     "HybridRetriever",
     "DriftDetector",
@@ -739,4 +889,5 @@ __all__ = [
     "nexus_resolve_conflict",
     "resolve_authority",
     "AUTHORITY_CHAIN",
+    "nexus_search_hybrid",
 ]
