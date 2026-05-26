@@ -317,24 +317,26 @@ One plugin. Three backends. Same tools, same API, same results.
 
 ## vs Other Memory Plugins
 
-| Feature | agentmemory | Holographic | Mem0 / Honcho | **Nexus** 🏆 |
-|---|---|---|---|---|
-| 🔍 Semantic search | ✅ (Gemini API) | ❌ Hash-based | ✅ (Cloud API) | ✅ (local or cloud) |
-| 🔀 **Hybrid retrieval** | ❌ | ❌ | ❌ | **✅ BM25 + Vector + RRF** |
-| 🩺 **Drift detection** | ❌ | ❌ | ❌ | **✅ Scored 0–10** |
-| 🛡️ **Anti-poisoning** | ❌ | ❌ | ❌ | **✅ Source tiers** |
-| 🔗 **Multi-Level Provenance** | ❌ | ❌ | ❌ | **✅ Source + Corroboration + Dependency Graph** |
-| 🗣️ **Authority Chain** | ❌ | ❌ | ❌ | **✅ 6-level priority resolution** |
-| ✅ **RAG Grounding Scoring** | ❌ | ❌ | ❌ | **✅ 5-signal evaluation** |
-| 🔧 **Auto-Fix / Consolidation** | ❌ | ❌ | ❌ | **✅ `nexus_consolidate()`** |
-| 📅 **Memory Expiry** | ❌ | ❌ | ❌ | **✅ 3 policies (static/normal/volatile)** |
-| 📊 **Tiered Enrichment** | ❌ | ❌ | ❌ | **✅ Auto T1/T2/T3 Heuristik** |
-| 🧬 **Fact Lifecycle Model** | ❌ | ❌ | ❌ | **✅ Append-only: pending → canonical \| deprecated \| rolled_back** |
-| 🔄 **Staging + Rollback** | ❌ | ❌ | ❌ | **✅ `create_pending()` → `promote()` → `deprecate()` → `rollback()`** |
-| 🎯 **Skill Export** | ❌ | ❌ | ❌ | **✅ `nexus-export --deploy` (Facts → SKILL.md)** |
-| 🌐 External APIs | Gemini required | None | Multiple cloud APIs | **Optional** |
-| 📦 Code size | ~50K TypeScript | ~1.5K Python | Varies | **~2.2K Python** |
-| ⏱️ Setup time | 30+ min + OAuth | `hermes memory setup` | Cloud account | **1 command** |
+| Feature | agentmemory | Holographic | Mem0 | Honcho | **Nexus** 🏆 |
+|---------|:-----------:|:-----------:|:----:|:------:|:------------:|
+| 🔍 Semantic search | ✅ (Gemini API) | ✅ (HRR algebra) | ✅ (Cloud API) | ✅ (pgvector) | ✅ (local or cloud) |
+| 🔀 **Hybrid retrieval** | ❌ | ❌ | ✅ Multi-signal | ❌ | **✅ BM25 + Vector + RRF** |
+| 🩺 **Drift detection** | ❌ | ❌ | ❌ * | ❌ | **✅ Scored 0–10** |
+| 🛡️ **Anti-poisoning** | ❌ | ❌ | ❌ | ❌ | **✅ Source tiers** |
+| 🔗 **Multi-Level Provenance** | ❌ | ❌ | ❌ | ❌ | **✅ Source + Corroboration + Dependency Graph** |
+| 🗣️ **Authority Chain** | ❌ | ❌ | ❌ | ❌ | **✅ 6-level priority resolution** |
+| ✅ **RAG Grounding Scoring** | ❌ | ❌ | ❌ | ❌ | **✅ 5-signal evaluation** |
+| 🔧 **Auto-Fix / Consolidation** | ❌ | ❌ | ❌ | ❌ | **✅ `nexus_consolidate()`** |
+| 📅 **Memory Expiry** | ❌ | ❌ | ❌ * | ❌ | **✅ 3 policies (static/normal/volatile)** |
+| 📊 **Tiered Enrichment** | ❌ | ❌ | ❌ | ❌ | **✅ Auto T1/T2/T3 Heuristik** |
+| 🧬 **Fact Lifecycle Model** | ❌ | ❌ | ❌ | ❌ | **✅ Append-only: pending → canonical \| deprecated \| rolled_back** |
+| 🔄 **Staging + Rollback** | ❌ | ❌ | ❌ | ❌ | **✅ `create_pending()` → `promote()` → `deprecate()` → `rollback()`** |
+| 🎯 **Skill Export** | ❌ | ❌ | ❌ | ❌ | **✅ `nexus-export --deploy` (Facts → SKILL.md)** |
+| 🌐 External APIs | Gemini required | None | Cloud API required | Cloud / PostgreSQL | **Optional** |
+| 📦 Code size | ~50K TypeScript | ~1.5K Python | Managed service | Managed service | **~2.2K Python** |
+| ⏱️ Setup time | 30+ min + OAuth | 1 command | API key + signup | Postgres + pgvector | **1 command** |
+
+*Mem0 lists staleness as an "open problem" in their 2026 report but does not ship a solution.*
 
 **Nexus is the only memory plugin with drift detection, provenance, authority chain, memory expiry, tiered enrichment, fact lifecycle model, staging/rollback, and skill export — plus hybrid retrieval, all in one package.**
 
