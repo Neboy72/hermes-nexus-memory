@@ -10,7 +10,7 @@ Nexus Memory fixes that. **Permanently.**
 [![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
-[![Version](https://img.shields.io/badge/version-1.7.2-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
+[![Version](https://img.shields.io/badge/version-1.8.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
 > ⭐ **If this project helps your agent remember — drop a star so others find it too. Takes 2 seconds.**
 
@@ -30,6 +30,19 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 ---
 
 ## What's New
+
+### v1.8.0 — Fact Lifecycle Model 🧬
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 🧬 **Fact Lifecycle Model** | Append-only state machine: `pending → canonical \| deprecated \| rolled_back`. Every revision gets `fact_id` (stable), `version_id` (unique), `content_hash` (frozen at create), `supersedes` (on version_id-level), `decision_event` (mandatory reason). | **No silent overwrites. No zombie facts. Full audit trail.** Every change is a new version — history is never rewritten. |
+| 🏗️ **Staging Area** | `create_pending()` → pending review → `promote()` to canonical. `list_pending()` shows update-drafts (versions WITH supersedes) alongside new facts. | Stage changes before they go live. Review queue for manual approval. |
+| 🔄 **Rollback** | `rollback()` creates a `rolled_back` marker + restores previous canonical. Both stay in append-only history. | Undo mistakes without losing evidence. The bad version persists as historical record. |
+| 🛡️ **Concurrency Guard** | `promote()` verifies `pending.supersedes == current_canonical.version_id` before writes. Stale pendings raise `ValueError` with clear message. | Prevents lost-update / fork scenarios when multiple processes stage against the same fact. |
+| 🚀 **Auto Collection Bootstrap** | `ensure_collections()` creates `hermes-memory-canonical` with correct 512D on first `create_pending()`/`promote()`. | No more schema/dimension crashes on first promote. |
+| 📋 **71 Unit Tests** | `tests/test_lifecycle.py` (60) + `tests/test_staging.py` (11) — state machine, concurrency guard, serialization, CanonicalView, collection bootstrap | Verified append-only semantics: content_hash locked at create, TTL excluded for deprecated/rolled_back, supersedes on version_id-level. |
+
+Install: `pip install --upgrade hermes-nexus-memory`
 
 ### v1.7.2
 
@@ -345,4 +358,4 @@ MIT — use it, modify it, ship it.
 
 ---
 
-<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.6.1 — Grounding Rebranding + Named Entity Matching</sub>
+<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v1.8.0 — Fact Lifecycle Model + Append-Only State Machine</sub>

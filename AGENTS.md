@@ -148,7 +148,7 @@ This enables `HybridRetriever` automatically. No extra config needed.
 
 ### Step 5: Drift Detection + Memory Expiry (Recommended)
 
-**Do NOT skip this.** Memory goes stale. Without drift detection, your agent will trust outdated facts. New in v1.7.0: memories now have a shelf life — see **Memory Expiry** in the What's New section.
+**Do NOT skip this.** Memory goes stale. Without drift detection, your agent will trust outdated facts. New in v1.8.0: facts have an append-only lifecycle model (pending → canonical → deprecated/rolled_back) with audit trail. See **What's New** in the README.
 
 Set up a nightly cron job:
 
@@ -190,13 +190,13 @@ hermes status | grep -i nexus
 
 # Test memory save and retrieve
 # In the next agent session, try:
-# nexus_remember(content="Nexus Memory v1.7.1 installed successfully", category="fact", tier=2)
+# nexus_remember(content="Nexus Memory v1.8.0 installed successfully", category="fact", tier=2)
 # nexus_remember(content="Primary API key goes in .env", category="config", tier=3)
 # nexus_search(query="installed successfully", limit=1)
 
-# Note: v1.7.1 introduces provenance scan and wikilink orphan detection.
-# - Run: from nexus.provenance import scan_provenance; scan_provenance()
-# - Run: from nexus.health import find_wikilink_orphans; find_wikilink_orphans()
+# Note: v1.8.0 introduces fact lifecycle model, staging area, and append-only state machine.
+# - Run: from nexus.staging import create_pending, promote, list_pending, rollback
+# - Run: from nexus.lifecycle import FactVersion, FactStatus, CanonicalView
 # - Set tier=2 or tier=3 for important memories (default T1 = raw storage)
 # - Expiry policies: static / normal (90d) / volatile (7d) — set via expiry_policy in payload
 ```
@@ -206,7 +206,7 @@ hermes status | grep -i nexus
 After installation, report:
 
 ```
-✅ Nexus Memory v1.7.1 installed
+✅ Nexus Memory v1.8.0 installed
 
 • Embedding: <provider chosen>
 • Hybrid Retrieval: <installed/skipped>
@@ -227,7 +227,7 @@ If one is found, it tells the user — no watch, no email, nothing manual needed
 The check runs automatically via the code in **Step 0** above. When a new release
 appears, the user sees:
 
-> 📢 New version v1.7.1 available (you have v1.6.1). Update by saying: upgrade nexus memory
+> 📢 New version v1.8.0 available (you have v1.6.1). Update by saying: upgrade nexus memory
 
 The bot then performs the upgrade on its own (Step 2b). No manual intervention needed.
 

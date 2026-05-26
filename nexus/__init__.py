@@ -4,6 +4,12 @@ Three layers of intelligence:
 - Core: Semantic vector search via Qdrant + multiple embedding backends
 - Retrieval: Hybrid BM25 + Vector + Reciprocal Rank Fusion (anti-poisoning)
 - Health: Belief drift detection (anti-staleness)
+
+v1.8.0+: Lifecycle Management
+- Append-only Fact Versioning with State Machine
+- Staging: Pending -> Promote/Deprecate/Rollback
+- Canonical Fast-Lookup Collection
+- Every status change requires a DecisionEvent
 """
 
 import logging
@@ -22,7 +28,24 @@ from nexus.provenance import (
     SOURCE_TYPES,
 )
 
-__version__ = "1.6.0"
+# -- Lifecycle API (v1.8.0+) --
+from nexus.lifecycle import (
+    FactVersion,
+    FactStatus,
+    CanonicalView,
+    DecisionEvent,
+)
+from nexus.staging import (
+    create_pending,
+    promote,
+    deprecate,
+    rollback,
+    list_pending,
+    list_deprecated,
+    get_fact_history,
+)
+
+__version__ = "1.8.0"
 
 _logger = logging.getLogger(__name__)
 

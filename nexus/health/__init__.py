@@ -155,7 +155,12 @@ def compute_expires_at(
 
 @dataclass
 class DriftReport:
-    """Structured drift detection report."""
+    """Structured drift detection report.
+
+    v1.8.0+: DriftDetector is ADVISORY only — it never modifies data.
+    ``promote_suggestions``, ``deprecate_suggestions``, and
+    ``rollback_suggestions`` contain recommended actions for manual review.
+    """
     total_entries: int = 0
     stale: list[dict] = field(default_factory=list)
     old: list[dict] = field(default_factory=list)
@@ -165,11 +170,23 @@ class DriftReport:
     contradictions: list[dict] = field(default_factory=list)
     excluded_count: int = 0
 
+    # -- Advisory suggestions (v1.8.0+) --
+    promote_suggestions: list[dict] = field(default_factory=list)
+    deprecate_suggestions: list[dict] = field(default_factory=list)
+    rollback_suggestions: list[dict] = field(default_factory=list)
+
     @property
     def summary(self) -> str:
         s = self.score
         emoji = "🟢" if s < 1 else "🟡" if s < 3 else "🔴"
-        return f"{emoji} Score: {s:.1f}/10"
+        parts = [f"{emoji} Score: {s:.1f}/10"]
+        if self.promote_suggestions:
+            parts.append(f"  [{len(self.promote_suggestions)} promote suggestion(s)]")
+        if self.deprecate_suggestions:
+            parts.append(f"  [{len(self.deprecate_suggestions)} deprecate suggestion(s)]")
+        if self.rollback_suggestions:
+            parts.append(f"  [{len(self.rollback_suggestions)} rollback suggestion(s)]")
+        return "".join(parts)
 
     def json(self) -> str:
         return json.dumps({
@@ -181,6 +198,9 @@ class DriftReport:
             "contradictions": len(self.contradictions),
             "excluded_count": self.excluded_count,
             "score": self.score,
+            "promote_suggestions": len(self.promote_suggestions),
+            "deprecate_suggestions": len(self.deprecate_suggestions),
+            "rollback_suggestions": len(self.rollback_suggestions),
         }, indent=2)
 
 
@@ -248,8 +268,19 @@ class DriftDetector:
                 break
         return points
 
-    def _check_stale(self, content: str) -> list[str]:
-        """Check content against stale patterns."""
+    def _check_stale(self, content_raw: str | dict) -> list[str]:
+        """Check content against stale patterns.
+
+        Handles both:
+        - legacy: ``content`` is a string directly
+        - v1.8.0: ``content`` is a dict with ``content`` key inside
+        """
+        if isinstance(content_raw, dict):
+            content = content_raw.get("content", json.dumps(content_raw))
+        else:
+            content = content_raw
+        if not isinstance(content, str):
+            content = str(content)
         findings = []
         for pattern, note in self.stale_patterns:
             if re.search(pattern, content, re.IGNORECASE):
@@ -386,11 +417,16 @@ class DriftDetector:
                 continue
 
             content = payload.get("content", "")
-            if not content:
-                content = f"{payload.get('user_content', '')} → {payload.get('assistant_content', '')}"
+            # v1.8.0+: content may be a dict {content: "text", ...}
+            if isinstance(content, dict):
+                text_content = content.get("content", "")
+            else:
+                text_content = content
+            if not text_content:
+                text_content = f"{payload.get('user_content', '')} -> {payload.get('assistant_content', '')}"
 
             # Stale pattern check
-            stale = self._check_stale(content)
+            stale = self._check_stale(text_content)
             if stale:
                 report.stale.append({
                     "id": str(p.get("id", "")),
@@ -398,7 +434,7 @@ class DriftDetector:
                     "category": payload.get("category", "unknown"),
                 })
 
-            # Age check
+            # Old content detection
             ts = payload.get("timestamp")
             if ts:
                 try:
@@ -425,7 +461,7 @@ class DriftDetector:
                     "policy": policy,
                     "expiry_reason": "valid_until" if has_valid_until else "policy",
                     "category": payload.get("category", "unknown"),
-                    "content_preview": (content or "")[:150],
+                    "content_preview": (text_content or "")[:150],
                 })
 
         # Drift score: weighted combination
@@ -437,7 +473,8 @@ class DriftDetector:
             10.0,
         )
 
-        # Also run contradiction detection on the same batch (excluding historical)
+        # ── Contradiction detection MUST run BEFORE suggestions ────────────
+        # rollback_suggestions depends on report.contradictions being populated
         if points:
             try:
                 # Filter out excluded entries before contradiction detection
@@ -449,6 +486,33 @@ class DriftDetector:
                     report.contradictions = self.detect_contradictions(active_points)
             except Exception:
                 pass
+
+        # ── Advisory suggestions (v1.8.0+ — NEVER auto-apply) ─────────────
+        # Expired entries -> suggest deprecation
+        for exp in report.expired:
+            report.deprecate_suggestions.append({
+                "fact_id": exp.get("id", ""),
+                "reason": f"Entry expired ({exp.get('policy', 'unknown')} policy, "
+                          f"reason: {exp.get('expiry_reason', 'unknown')})",
+                "content_preview": exp.get("content_preview", "")[:100],
+            })
+
+        # Stale pattern matches -> suggest deprecation
+        for st in report.stale:
+            report.deprecate_suggestions.append({
+                "fact_id": st.get("id", ""),
+                "reason": f"Stale pattern match: {'; '.join(st.get('issues', []))}",
+                "category": st.get("category", "unknown"),
+            })
+
+        # Contradictions -> suggest review (NOW has data!)
+        for c in report.contradictions:
+            report.rollback_suggestions.append({
+                "id_a": c.get("id_a", ""),
+                "id_b": c.get("id_b", ""),
+                "reason": f"Contradiction detected: {c.get('type', 'semantic')} "
+                          f"(similarity: {c.get('similarity', 0):.2f})",
+            })
 
         return report
 
@@ -473,7 +537,12 @@ class DriftDetector:
                 continue
 
             content = entry.get("content", "")
-            stale = self._check_stale(content)
+            # v1.8.0+: content may be a dict {content: "text", ...}
+            if isinstance(content, dict):
+                text_content = content.get("content", "")
+            else:
+                text_content = content
+            stale = self._check_stale(text_content)
             if stale:
                 report.stale.append({
                     "id": entry.get("id", ""),
@@ -501,7 +570,7 @@ class DriftDetector:
                     "id": entry.get("id", ""),
                     "expires_at": expires_at.isoformat() if expires_at else None,
                     "policy": policy,
-                    "content_preview": (content or "")[:150],
+                    "content_preview": (text_content or "")[:150],
                 })
 
         report.score = min(
