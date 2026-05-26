@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.8.0] — 2026-05-26
+
+### Added
+
+- **Fact Lifecycle Model — `nexus/lifecycle.py`** — Append-only state machine:
+  - `FactVersion` with `fact_id` (stable identity), `version_id` (unique per revision), `status` (`pending → canonical | deprecated | rolled_back`)
+  - `content_hash` locks payload at creation — tamper detection on promote
+  - `supersedes` on version_id-level — precise chain for audit
+  - `decision_event` mandatory for every status transition
+  - `CanonicalView` — current canonical fact by fact_id
+  - TTL excluded for `deprecated`/`rolled_back` — historical records preserved
+- **Staging Area — `nexus/staging.py`**:
+  - `create_pending()` / `promote()` / `deprecate()` / `rollback()` — live against Qdrant
+  - `list_pending()` — shows update-drafts (versions WITH supersedes) alongside new facts
+  - `ensure_collections(host, port)` — auto-bootstrap `hermes-memory-canonical` with 512D/Cosine
+  - Concurrency Guard: `promote()` verifies `pending.supersedes == current_canonical.version_id`
+- **71 Unit Tests** — `tests/test_lifecycle.py` (60) + `tests/test_staging.py` (11): state machine transitions, concurrency guard (stale/fresh/new), collection bootstrap (404/200/500/partial), serialization, CanonicalView
+
 ## [1.7.2] — 2026-05-26
 
 ### Added
