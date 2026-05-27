@@ -272,7 +272,7 @@ This scrolls all points, adds lifecycle fields, and preserves existing payloads.
 Like Nexus Memory? If you haven't already, drop us a star on GitHub.  
 It helps others find the project, takes 3 seconds, and costs you nothing.
 
-👉 **[Neboy72/hermes-nexus-memory](https://github.com/Neboy72/hermes-nexus-memory)**
+👉 [Neboy72/hermes-nexus-memory](https://github.com/Neboy72/hermes-nexus-memory)
 
 ---
 
