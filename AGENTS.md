@@ -147,7 +147,7 @@ This enables `HybridRetriever` automatically. No extra config needed.
 
 ### Step 5: Drift Detection + Memory Expiry (Recommended)
 
-**Do NOT skip this.** Memory goes stale. Without drift detection, your agent will trust outdated facts. See **What's New** in the README for the latest features (v2.0.0: SkillGraph Edge Store + Query Layer, v1.9.0: Skill Export — turn canonical facts into ready-to-use SKILL.md files).
+**Do NOT skip this.** Memory goes stale. Without drift detection, your agent will trust outdated facts. See **What's New** in the README for the latest features (v2.1.0: Auto-Discovery + Graph Analytics, v2.0.0: SkillGraph Edge Store + Query Layer).
 
 Set up a nightly cron job:
 

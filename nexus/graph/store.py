@@ -10,6 +10,8 @@ import json
 import logging
 import os
 import sqlite3
+import uuid
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from nexus.graph.schema import (
@@ -235,6 +237,88 @@ class EdgeStore:
 
     # ── Edge existence check ────────────────────────────────────────────────
 
+    def add_proposed_edge(
+        self,
+        source_fact_id: str,
+        target_fact_id: str,
+        relation: str,
+        reason: str | None = None,
+        confidence: float | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> Edge:
+        """Create a proposed edge (auto-discovered, needs confirmation).
+
+        Proposed edges are not returned by ``list_edges()`` by default
+        (which filters for ``status='active'``). They must be explicitly
+        queried with ``status='proposed'``.
+
+        ``confidence`` is stored in ``metadata_json['confidence']``.
+        """
+        valid_relations = {e.value for e in EdgeRelation}
+        if relation not in valid_relations:
+            raise ValueError(
+                f"Invalid relation '{relation}'. "
+                f"Must be one of: {', '.join(sorted(valid_relations))}"
+            )
+
+        meta = dict(metadata or {})
+        if confidence is not None:
+            meta["confidence"] = confidence
+
+        now = datetime.now(timezone.utc).isoformat()
+        edge_id = str(uuid.uuid4())
+        edge = Edge(
+            edge_id=edge_id,
+            source_fact_id=source_fact_id,
+            target_fact_id=target_fact_id,
+            relation=relation,
+            status=EdgeStatus.PROPOSED.value,
+            created_at=now,
+            updated_at=now,
+            reason=reason,
+            metadata_json=json.dumps(meta) if meta else None,
+        )
+
+        self.conn.execute(
+            """INSERT INTO edges
+               (edge_id, source_fact_id, target_fact_id, relation, status,
+                created_at, updated_at, reason, metadata_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                edge.edge_id, edge.source_fact_id, edge.target_fact_id,
+                edge.relation, edge.status,
+                edge.created_at, edge.updated_at,
+                edge.reason, edge.metadata_json,
+            ),
+        )
+        self.conn.commit()
+        _logger.info(
+            "Proposed edge added: %s (%s) --[%s]--> %s (confidence=%s)",
+            source_fact_id, relation, edge_id, target_fact_id, confidence,
+        )
+        return edge
+
+    def promote_edge(self, edge_id: str, reason: str | None = None) -> Edge | None:
+        """Promote a proposed edge to active status.
+
+        Returns ``None`` if no proposed edge was found with that ID.
+        Raises ``sqlite3.IntegrityError`` if promoting would create a duplicate.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        cursor = self.conn.execute(
+            """UPDATE edges
+               SET status = 'active', updated_at = ?,
+                   reason = COALESCE(?, reason)
+               WHERE edge_id = ? AND status = 'proposed'""",
+            (now, reason, edge_id),
+        )
+        self.conn.commit()
+        if cursor.rowcount == 0:
+            _logger.warning("No proposed edge found with edge_id=%s", edge_id)
+            return None
+        _logger.info("Edge promoted to active: %s", edge_id)
+        return self.get_edge(edge_id)
+
     def has_active_edge(
         self,
         source_fact_id: str,
@@ -246,6 +330,25 @@ class EdgeStore:
             """SELECT 1 FROM edges
                WHERE source_fact_id = ? AND target_fact_id = ?
                  AND relation = ? AND status = 'active'
+               LIMIT 1""",
+            (source_fact_id, target_fact_id, relation),
+        ).fetchone()
+        return row is not None
+
+    def has_any_edge(
+        self,
+        source_fact_id: str,
+        target_fact_id: str,
+        relation: str,
+    ) -> bool:
+        """Check if ANY edge exists (any status) between these facts.
+
+        Used by dedup to avoid re-discovering already-known relations.
+        """
+        row = self.conn.execute(
+            """SELECT 1 FROM edges
+               WHERE source_fact_id = ? AND target_fact_id = ?
+                 AND relation = ?
                LIMIT 1""",
             (source_fact_id, target_fact_id, relation),
         ).fetchone()

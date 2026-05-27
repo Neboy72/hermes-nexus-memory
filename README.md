@@ -10,7 +10,7 @@ Nexus Memory fixes that. **Permanently.**
 [![GitHub License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
-[![Version](https://img.shields.io/badge/version-2.0.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
+[![Version](https://img.shields.io/badge/version-2.1.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
 > ⭐ **If this project helps your agent remember — drop a star so others find it too. Takes 2 seconds.**
 
@@ -42,6 +42,18 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 | 🧪 **165 Unit Tests (35 new)** | `tests/test_graph.py` — SQLite schema validation, edge CRUD, lifecycle (reject/deprecate/reactivate), BFS depth-limiting, DFS chains, persistence, `get_stats()` coverage. | Verified on Python 3.12 — 165/165 pass. |
 
 Install: `pip install --upgrade hermes-nexus-memory`
+
+### v2.1.0 — Auto-Discovery + Graph Analytics 🔄
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 🔄 **Auto-Discovery** | `AutoDiscovery.discover_all()` — scannt alle canonical Facts, findet Similarity via Qdrant (O(n·k)), klassifiziert Relationen heuristisch (Wikilinks, "siehe/vgl.", Keyword-Overlap), dedupt gegen SQLite, speichert als `active` (≥0.85) oder `proposed` (<0.85) | **Zero-Token Relationserkennung.** Kein LLM, keine neuen Dependencies. Facts verbinden sich automatisch — ohne manuelle Edges. |
+| 📊 **Graph Analytics** | `GraphAnalytics.full_report()` — Hub-Scores (meistvernetzte Facts), Isolation-Scores, Knowledge-Gaps, Connected Components (Weakly), Relation-Distribution | **Verstehe deinen Wissensgraphen.** Sieh auf einen Blick welche Facts isoliert sind (= Wissenslücken) und welche am stärksten vernetzt. |
+| 🚀 **Graph Boost** | `HybridRetriever.search_hybrid(graph_boost=True)` — boostet Suchergebnisse um `1.0 + degree * 0.05` basierend auf Graph-Konnektivität | **Vernetzte Facts ranken höher.** Ein Fact mit 10 Kanten kriegt 1.5x Boost, ein isoliertes bleibt bei 1.0x. |
+| 🧪 **219 Unit Tests** | 45 neue Tests für Discovery + Analytics + Graph Boost + Proposed Edges | Alle grün auf Python 3.12 in 2.6s. |
+| ✨ **Convenience Tools** | `nexus_discover()` + `nexus_graph_report(as_text=True)` — direkte API-Aufrufe ohne manuelle Initialisierung | Ein Aufruf, fertig. `nexus_discover()` = scan + store, `nexus_graph_report()` = sofortige Analyse. |
+
+Proposed Edges sind standardmässig unsichtbar in `list_edges()` — nur bei `status='proposed'` sichtbar. `promote_edge()` macht sie active.
 
 ### v1.9.0 — Skill Export 🎯
 
@@ -387,4 +399,4 @@ MIT — use it, modify it, ship it.
 
 ---
 
-<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v2.0.0 — SkillGraph: Edge Store + Query Layer</sub>
+<sub>Built by [Nebo](https://github.com/Neboy72) · May 2026 · v2.1.0 — Auto-Discovery + Graph Analytics</sub>

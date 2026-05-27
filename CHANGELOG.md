@@ -1,5 +1,43 @@
 # Changelog
 
+## [2.1.0] — 2026-05-27
+
+### Added
+
+- **Auto-Discovery — `nexus/discovery/`** — Automatic relation detection:
+  - `AutoDiscovery.discover_all()` — scannt canonical Facts → Qdrant-Suche (O(n·k)) → heuristische Klassifikation → dedup → speichert
+  - `matcher.py` — Qdrant-native Vector Similarity mit Threshold-Filter (≥0.85 auto-insert, ≥0.70 proposed)
+  - `classifier.py` — Relationserkennung ohne LLM: Wikilinks, "siehe/vgl.", Keyword-Overlap, Contradiction-Signale
+  - `dedup.py` — filtert bereits existierende Edges via SQLite `has_any_edge()`
+  - Keine neuen Dependencies (nutzt bestehenden qdrant-client + networkx)
+  - Null Token-Kosten — alles Vektor-Mathematik + Regex-Heuristiken
+- **Graph Analytics — `nexus/analytics/`** — Graph-Analyse:
+  - `GraphAnalytics.hubs(top_n)` — meistvernetzte Facts
+  - `GraphAnalytics.gaps()` — isolierte Facts ohne Connections (= Wissenslücken)
+  - `GraphAnalytics.clusters()` — Connected Components (Weakly)
+  - `GraphAnalytics.full_report()` — kompletter Report + `report_text()` für Lesbarkeit
+  - `GraphAnalytics.relations()` — Edge-Verteilung nach Relationstyp
+- **Graph Boost — Hybrid Search** — `search_hybrid(graph_boost=True)`:
+  - Boost-Formel: `1.0 + degree * 0.05` → vernetzte Facts ranken höher
+  - Erfordert optionalen `skillgraph`-Parameter im Constructor
+- **Convenience Tools** — `nexus_discover()` + `nexus_graph_report()` in Public API
+- **Schema-Erweiterung**:
+  - `EdgeRelation.REFERENCES` = "references" (Auto-Discovery Standard-Relation)
+  - `EdgeStatus.PROPOSED` = "proposed" (unsichtbar in Standard-Queries, explizit abfragbar)
+  - `EdgeStore.add_proposed_edge()`, `promote_edge()`, `has_any_edge()`
+
+### Changed
+
+- `__version__` → `"2.1.0"`
+- `nexus/__init__.py` — v2.1.0 Module imports + convenience tools
+- `HybridRetriever.__init__` — optionaler `skillgraph`-Parameter
+
+### Notes
+
+- v2.1.0 baut auf v2.0.0 SkillGraph auf — SQLite-EdgeStore bleibt Source of Truth
+- Discovery-Trigger: manuell (kein Cron) — `discover_all()` bei Bedarf
+- Proposed Edges sind standardmässig unsichtbar in `list_edges()` — nur bei `status='proposed'` sichtbar
+
 ## [2.0.0] — 2026-05-26
 
 ### Added

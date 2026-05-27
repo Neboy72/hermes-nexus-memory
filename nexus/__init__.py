@@ -12,6 +12,13 @@ v1.8.0+: Lifecycle Management
 - Staging: Pending -> Promote/Deprecate/Rollback
 - Canonical Fast-Lookup Collection
 - Every status change requires a DecisionEvent
+
+v2.1.0+: Auto-Discovery + Graph Analytics
+- AutoDiscovery: Automatic relation detection between canonical facts
+  (Qdrant-native O(n·k) Similarity + Heuristic Classification, no LLM)
+- GraphAnalytics: Hub scores, isolation scores, knowledge gaps, clusters
+- Graph Boost: Fact connectivity boosts Hybrid Search rankings
+- REFERENCES relation + PROPOSED edge status
 """
 
 import logging
@@ -54,7 +61,12 @@ from nexus.export import (
     list_topics,
 )
 
-__version__ = "2.0.0"
+# ── SkillGraph Discovery + Analytics API (v2.1.0+) ────────────────────────
+from nexus.discovery import AutoDiscovery
+from nexus.analytics import GraphAnalytics
+from nexus.graph.schema import EdgeRelation, EdgeStatus
+
+__version__ = "2.1.0"
 
 _logger = logging.getLogger(__name__)
 
@@ -910,6 +922,72 @@ def _embed_ollama(query: str) -> list[float] | None:
         return None
 
 
+# ── v2.1.0 Convenience Tools ───────────────────────────────────────────────
+
+
+def nexus_discover(
+    categories: list[str] | None = None,
+    sqlite_path: str | None = None,
+    qdrant_url: str = "http://localhost:6333",
+    collection_name: str = "hermes-memory",
+) -> dict:
+    """Run Auto-Discovery: scan facts → find relations → store edges.
+
+    Convenience wrapper around ``AutoDiscovery.discover_all()``.
+    EdgeStore is initialized automatically (creates tables if needed).
+
+    Args:
+        categories: Optional — only discover within these categories.
+        sqlite_path: Path to SQLite DB (default: ``~/.hermes/skillgraph.db``).
+        qdrant_url: Qdrant HTTP URL.
+        collection_name: Qdrant collection name.
+
+    Returns:
+        Summary dict with stats (total_facts_scanned, candidates_found,
+        inserted_active, inserted_proposed, ...).
+    """
+    from nexus.discovery import AutoDiscovery
+    from nexus.graph.store import EdgeStore
+
+    store = EdgeStore(db_path=sqlite_path)
+    ad = AutoDiscovery(
+        store=store,
+        qdrant_url=qdrant_url,
+        collection_name=collection_name,
+    )
+    ad.initialize()
+    return ad.discover_all(categories=categories)
+
+
+def nexus_graph_report(
+    sqlite_path: str | None = None,
+    as_text: bool = False,
+) -> dict | str:
+    """Generate a comprehensive SkillGraph analytics report.
+
+    Convenience wrapper around ``GraphAnalytics.full_report()``.
+
+    Args:
+        sqlite_path: Path to SQLite DB (default: ``~/.hermes/skillgraph.db``).
+        as_text: If True, return formatted text instead of dict.
+
+    Returns:
+        Dict or formatted text with graph stats, top hubs,
+        relation distribution, clusters, knowledge gaps.
+    """
+    from nexus.graph.graph import SkillGraph
+    from nexus.analytics import GraphAnalytics
+
+    sg = SkillGraph(sqlite_path=sqlite_path)
+    sg.initialize()
+    analytics = GraphAnalytics(sg)
+    report = analytics.full_report()
+
+    if as_text:
+        return analytics.report_text(report)
+    return report
+
+
 __all__ = [
     "HybridRetriever",
     "DriftDetector",
@@ -922,4 +1000,6 @@ __all__ = [
     "resolve_authority",
     "AUTHORITY_CHAIN",
     "nexus_search_hybrid",
+    "nexus_discover",
+    "nexus_graph_report",
 ]

@@ -23,7 +23,8 @@ from typing import Optional
 class EdgeRelation(str, Enum):
     """Semantic relation between two facts.
 
-    Core set for v2.0.0 — no extensions yet.
+    Core: v2.0.0
+    Extended: v2.1.0 — added ``references`` (auto-discovered similarity).
     """
 
     SUPERSEDES = "supersedes"        # A replaces B (B is obsolete)
@@ -31,15 +32,17 @@ class EdgeRelation(str, Enum):
     SUPPORTS = "supports"            # A reinforces / confirms B
     ALTERNATIVE_TO = "alternative_to"  # A is a viable alternative to B
     DEPENDS_ON = "depends_on"        # A requires B (dependency)
+    REFERENCES = "references"        # A is related / similar to B (auto-discovered)
 
 
 class EdgeStatus(str, Enum):
     """Lifecycle status of an edge.
 
-    Kept deliberately simpler than the Fact lifecycle:
-    active → deprecated | rejected
+    Core: active → deprecated | rejected
+    Extended: v2.1.0 — ``proposed`` for auto-discovered edges awaiting confirmation.
     """
     ACTIVE = "active"
+    PROPOSED = "proposed"      # Auto-discovered, needs human confirmation
     DEPRECATED = "deprecated"
     REJECTED = "rejected"
 

@@ -21,6 +21,10 @@ import json, re
 from collections import defaultdict
 from pathlib import Path
 from datetime import datetime
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from nexus.graph.graph import SkillGraph
 
 try:
     import bm25s
@@ -83,12 +87,14 @@ class HybridRetriever:
         qdrant_host: str = "localhost",
         qdrant_port: int = 6333,
         collection_name: str = "hermes-memory",
-    ):
+        skillgraph: "SkillGraph | None" = None,
+    ) -> None:
         if not HAS_BM25:
             raise ImportError("bm25s is required: pip install bm25s")
 
         self.qdrant_url = f"http://{qdrant_host}:{qdrant_port}"
         self.collection = collection_name
+        self._skillgraph = skillgraph  # Optional for graph_boost
         self._bm25 = None
         self._ids = []
         self._texts = []
@@ -298,13 +304,16 @@ class HybridRetriever:
         query: str,
         query_vector: list[float] | None = None,
         top_k: int = 10,
+        graph_boost: bool = False,
     ) -> list[dict]:
-        """Full hybrid search: BM25 + (optional) vector + RRF + tier boost.
+        """Full hybrid search: BM25 + (optional) vector + RRF + tier + graph boost.
 
         Args:
             query: Search query string.
             query_vector: Optional pre-computed embedding for vector search.
             top_k: Number of results to return.
+            graph_boost: If True, boost results by graph connectivity
+                         (requires ``skillgraph`` in constructor).
 
         Returns:
             List of dicts with id, rrf_score, tier, methods, text.
@@ -320,6 +329,10 @@ class HybridRetriever:
 
         # Tier boost
         fused = self._tier_boost(fused)
+
+        # Graph boost (v2.1.0)
+        if graph_boost:
+            fused = self._graph_boost(fused)
 
         return fused[:top_k]
 
@@ -363,5 +376,34 @@ class HybridRetriever:
 
             item["tier"] = tier
             item["rrf_score"] *= boost
+
+        return sorted(ranked, key=lambda x: x["rrf_score"], reverse=True)
+
+    def _graph_boost(self, ranked: list[dict]) -> list[dict]:
+        """Apply graph connectivity boost to ranked results.
+
+        Boost formula: ``1.0 + (in_degree + out_degree) * 0.05``
+
+        A fact with 10 edges gets 1.5x boost. An isolated fact stays at 1.0x.
+        No-op if no SkillGraph was provided in constructor.
+
+        Requires ``skillgraph`` parameter in constructor.
+        """
+        if self._skillgraph is None:
+            return ranked
+
+        for item in ranked:
+            fact_id = item.get("id", "")
+            if not fact_id:
+                continue
+
+            if not self._skillgraph.has_node(fact_id):
+                continue
+
+            neighbors = self._skillgraph.neighbors(fact_id)
+            degree = len(neighbors)
+            boost = 1.0 + degree * 0.05
+            item["rrf_score"] *= boost
+            item["graph_boost"] = round(boost, 3)
 
         return sorted(ranked, key=lambda x: x["rrf_score"], reverse=True)
