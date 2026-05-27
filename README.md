@@ -93,6 +93,9 @@ Proposed Edges are invisible by default in `list_edges()` — only visible with 
 
 Install: `pip install --upgrade hermes-nexus-memory`
 
+<details>
+<summary>Earlier releases (v1.0.0 – v1.9.0)</summary>
+
 ### v1.9.0 — Skill Export 🎯
 
 | Feature | What it does | Why it matters |
@@ -205,6 +208,8 @@ Install: `pip install hermes-nexus-memory[hybrid]`
 | 🛡️ **Hybrid Retrieval** | BM25 + Vector + Reciprocal Rank Fusion | Kills RAG poisoning — hybrid search catches what pure vector misses |
 | 🏷️ **Source Tier Boosting** | Trust-ranked sources (🟢🟡🔴) | Prioritizes your own data, downgrades untrusted inputs |
 | 🔍 **Belief Drift Detection** | Scores memory health 0–10 | Finds stale entries *before* they corrupt your agent |
+
+</details>
 
 ---
 
