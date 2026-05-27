@@ -24,7 +24,7 @@ import requests
 
 HOST = "localhost"
 PORT = 6333
-COLLECTION = "hermes-memory"
+COLLECTION = "hermes-memory-1024d"
 BASE = f"http://{HOST}:{PORT}"
 
 BATCH_SIZE = 100

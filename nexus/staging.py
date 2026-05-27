@@ -55,7 +55,7 @@ _logger = logging.getLogger(__name__)
 #     updated_at: str
 
 
-COLLECTION_ALL = "hermes-memory"
+COLLECTION_ALL = "hermes-memory-1024d"
 COLLECTION_CANONICAL = "hermes-memory-canonical"
 
 # ── Collection Bootstrap (lazy, called on first write) ─────────────────────

@@ -27,7 +27,7 @@ DEFAULT_LIMIT = 5              # How many candidates per fact
 
 def scroll_facts(
     qdrant_url: str = "http://localhost:6333",
-    collection: str = "hermes-memory",
+    collection: str = "hermes-memory-1024d",
     with_vectors: bool = True,
     limit_per_scroll: int = 100,
 ) -> list[dict]:
@@ -84,7 +84,7 @@ def scroll_facts(
 def search_similar_facts(
     query_vector: list[float],
     qdrant_url: str = "http://localhost:6333",
-    collection: str = "hermes-memory",
+    collection: str = "hermes-memory-1024d",
     top_k: int = 5,
 ) -> list[dict]:
     """Search Qdrant for facts similar to a given query vector.
@@ -127,7 +127,7 @@ def search_similar_facts(
 def match_facts_against_each_other(
     facts: list[dict],
     qdrant_url: str = "http://localhost:6333",
-    collection: str = "hermes-memory",
+    collection: str = "hermes-memory-1024d",
     top_k: int = 5,
     threshold: float = 0.85,
 ) -> list[dict]:

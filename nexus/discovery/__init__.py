@@ -34,7 +34,7 @@ from nexus.graph.store import EdgeStore
 _logger = logging.getLogger(__name__)
 
 DEFAULT_QDRANT_URL = "http://localhost:6333"
-DEFAULT_COLLECTION = "hermes-memory"
+DEFAULT_COLLECTION = "hermes-memory-1024d"
 DEFAULT_TOP_K = 5
 
 # Confidence thresholds (from Miosha review, confirmed 27.05.2026)

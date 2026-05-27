@@ -86,7 +86,7 @@ class HybridRetriever:
         self,
         qdrant_host: str = "localhost",
         qdrant_port: int = 6333,
-        collection_name: str = "hermes-memory",
+        collection_name: str = "hermes-memory-1024d",
         skillgraph: "SkillGraph | None" = None,
     ) -> None:
         if not HAS_BM25:

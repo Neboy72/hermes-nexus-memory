@@ -81,7 +81,7 @@ def nexus_update(
     modified_by: str | None = None,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory",
+    collection_name: str = "hermes-memory-1024d",
 ) -> dict:
     """Update an existing memory point without losing metadata.
 
@@ -197,7 +197,7 @@ def nexus_remember(
     tier: int | str | None = None,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory",
+    collection_name: str = "hermes-memory-1024d",
     **kwargs: Any,
 ) -> dict:
     """Store a new memory with bi-temporal metadata and optional provenance.
@@ -296,7 +296,7 @@ def nexus_consolidate(
     dry_run: bool = True,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory",
+    collection_name: str = "hermes-memory-1024d",
 ) -> list[dict]:
     """Resolve detected contradictions by marking older entries as historical.
 
@@ -530,7 +530,7 @@ def nexus_query_valid(
     at_date: str | None = None,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory",
+    collection_name: str = "hermes-memory-1024d",
     limit: int = 10,
 ) -> list[dict]:
     """Query memories that are valid at a specific date.
@@ -781,7 +781,7 @@ def nexus_search_hybrid(
     top_k: int = 10,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory",
+    collection_name: str = "hermes-memory-1024d",
 ) -> list[dict]:
     """Hybrid search across all memories: BM25 + Vector + RRF + Tier-Boost.
 
@@ -885,7 +885,7 @@ def _embed_voyage(query: str) -> list[float] | None:
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
-            json={"input": [query], "model": "voyage-3-lite"},
+            json={"input": [query], "model": "voyage-3-large"},
             timeout=10,
         )
         data = r.json()
@@ -929,7 +929,7 @@ def nexus_discover(
     categories: list[str] | None = None,
     sqlite_path: str | None = None,
     qdrant_url: str = "http://localhost:6333",
-    collection_name: str = "hermes-memory",
+    collection_name: str = "hermes-memory-1024d",
 ) -> dict:
     """Run Auto-Discovery: scan facts → find relations → store edges.
 

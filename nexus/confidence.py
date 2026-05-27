@@ -166,7 +166,7 @@ def _fetch_chunks(
     query_embedding: list[float],
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection: str = "hermes-memory",
+    collection: str = "hermes-memory-1024d",
     top_k: int = 5,
 ) -> list[dict]:
     """Hole die Top-K Chunks aus Qdrant (mit voller Payload)."""
@@ -218,7 +218,7 @@ class GroundingScorer:
         embed_provider: str = "voyage",
         qdrant_host: str = "localhost",
         qdrant_port: int = 6333,
-        collection: str = "hermes-memory",
+        collection: str = "hermes-memory-1024d",
         top_k: int = 5,
     ):
         self.embed_provider = embed_provider

@@ -70,7 +70,7 @@ SOURCE_TYPES = {
 
 
 def scan_provenance(qdrant_host: str = "localhost", qdrant_port: int = 6333,
-                     collection_name: str = "hermes-memory", limit: int = 500) -> dict:
+                     collection_name: str = "hermes-memory-1024d", limit: int = 500) -> dict:
     """Scan all memory entries in Qdrant and analyze provenance metadata.
 
     Extracts source types, creators, confidence scores, and criticality
@@ -284,7 +284,7 @@ def find_corroboration(
     content: str,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory",
+    collection_name: str = "hermes-memory-1024d",
     threshold: float = 0.7,
     limit: int = 5,
 ) -> list[dict]:
@@ -359,7 +359,7 @@ def corroborate_entry(
     corroborator_id: str,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory",
+    collection_name: str = "hermes-memory-1024d",
 ) -> dict:
     """Link two entries as corroborating each other (bidirectional).
 
@@ -457,7 +457,7 @@ def add_dependency(
     depends_on_id: str,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory",
+    collection_name: str = "hermes-memory-1024d",
 ) -> dict:
     """Link two entries as dependency (bidirectional).
 
@@ -567,7 +567,7 @@ def build_dependency_graph(
     point_id: str,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory",
+    collection_name: str = "hermes-memory-1024d",
     max_depth: int = 3,
 ) -> dict:
     """Build a full dependency graph for a memory entry.

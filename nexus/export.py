@@ -33,7 +33,7 @@ def search_knowledge(
     limit: int = 20,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory",
+    collection_name: str = "hermes-memory-1024d",
 ) -> list[dict]:
     """Search Nexus Memory for canonical facts related to *topic*.
 
@@ -372,7 +372,7 @@ def export_skill(
 def list_topics(
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory",
+    collection_name: str = "hermes-memory-1024d",
     min_facts: int = 3,
     max_scan: int = 2000,
 ) -> list[dict]:
