@@ -366,7 +366,7 @@ One plugin. Three backends. Same tools, same API, same results.
 
 *Mem0 lists staleness as an "open problem" in their 2026 report but does not ship a solution.*
 
-**Nexus is the only memory plugin with drift detection, provenance, authority chain, memory expiry, tiered enrichment, fact lifecycle model, staging/rollback, and skill export — plus hybrid retrieval, all in one package.**
+**Nexus is the only memory plugin with auto-discovery, graph analytics, graph boost, drift detection, provenance, authority chain, memory expiry, tiered enrichment, fact lifecycle model, staging/rollback, skillgraph, and skill export — plus hybrid retrieval, all in one package.**
 
 ---
 
