@@ -136,6 +136,8 @@ class HybridRetriever:
             pid = p.get("id", "")
             payload = p.get("payload", {})
             text = payload.get("content", "")
+            if not isinstance(text, str):
+                text = str(text) if text else ""
             if not text:
                 text = f"{payload.get('user_content', '')} → {payload.get('assistant_content', '')}"
             self._ids.append(str(pid))
