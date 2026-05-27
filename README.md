@@ -5,19 +5,22 @@
 You talk to your bot. Next day it asks you the same thing.  
 Nexus Memory fixes that. **Permanently.**
 
-[![🤖 Bot Self-Install](https://img.shields.io/badge/🤖%20Bot%20Self--Install-brightgreen?style=flat-square)](AGENTS.md)
-[![⭐ Star on GitHub](https://img.shields.io/badge/⭐%20Star%20on%20GitHub-gold?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory)
+Your agent remembers across sessions — facts, decisions, patterns.  
+Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stale memories automatically.  
+**No nonsense. No bloat. Just memory that works.**  
+**No API keys needed. Local by default — cloud if you want.**
+
+👉 **Install your agent** → [![🤖 Bot Self-Install](https://img.shields.io/badge/🤖%20Bot%20Self--Install-brightgreen?style=flat-square)](AGENTS.md)
+
+⭐ **Support the project** → [![⭐ Star on GitHub](https://img.shields.io/badge/⭐%20Star%20on%20GitHub-gold?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory)
+
+[![Stars](https://img.shields.io/github/stars/Neboy72/hermes-nexus-memory?style=flat-square&logo=github)](https://github.com/Neboy72/hermes-nexus-memory)
 [![License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
 [![Version](https://img.shields.io/badge/version-2.1.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
 > **Bot Self-Install:** Tell your AI: *"Read AGENTS.md and install Nexus Memory."* It does the rest.
-
-Your agent remembers across sessions — facts, decisions, patterns.  
-Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stale memories automatically.  
-**No nonsense. No bloat. Just memory that works.**  
-**No API keys needed. Local by default — cloud if you want.**
 
 ---
 
