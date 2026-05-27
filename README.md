@@ -29,19 +29,45 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 
 ---
 
+## Quick Start
+
+### 🤖 Tell your agent to install it
+
+Send this prompt to your Hermes agent:
+
+```
+Read https://raw.githubusercontent.com/Neboy72/hermes-nexus-memory/main/AGENTS.md and follow the installation instructions.
+```
+
+Your agent will check prerequisites, install everything, configure the provider, and verify. Zero manual steps.
+
+### 🛠️ Or install manually
+
+```bash
+# Install the plugin
+curl -sL https://raw.githubusercontent.com/Neboy72/hermes-nexus-memory/main/install.sh | bash
+
+# Or use the built-in wizard:
+hermes memory setup   # → Select "nexus" → Pick embedding provider → Done.
+```
+
+Restart your gateway (from terminal, not inside agent chat):
+
+```bash
+hermes gateway restart
+```
+
+### Add Hybrid Retrieval (optional, recommended)
+
+```bash
+pip install bm25s
+```
+
+That's it. Hybrid search activates automatically when `bm25s` is installed.
+
+---
+
 ## What's New
-
-### v2.0.0 — SkillGraph: Edge Store + Query Layer 🔗
-
-| Feature | What it does | Why it matters |
-|---------|-------------|---------------|
-| 🔗 **SkillGraph Edge Store** | SQLite-backed directed graph — `add_edge()` with 5 relation types (`depends_on`, `extends`, `contradicts`, `required_by`, `references`), 3 lifecycle statuses (`active`, `rejected`, `deprecated`), partial unique index `WHERE status='active'` | **Store WHY facts relate, not just WHAT they are.** No duplicate active edges. Full audit trail through lifecycle states. |
-| 🕸️ **Graph Query Layer** | NetworkX in-memory cache — BFS with depth-limit (`get_related()`), DFS chain detection (`get_path()`), symmetric `contradicts` edges auto-inserted. Incremental updates — no full rebuild on mutation. | Query relationships in milliseconds. Multi-hop paths for reasoning chains. Zero-cost updates after one-time startup rebuild. |
-| 🏛️ **Schema-First Design** | `EdgeRelation` enum + `EdgeStatus` enum in `schema.py`. SQLite = Source of Truth, NetworkX = readonly cache. `write_to_store()` before `sync_to_cache()`. | **Data integrity before performance.** The schema is the contract — everything validates against it before it touches the store. |
-| 🔄 **Incremental Graph Updates** | `_add_edge_to_graph()` / `_remove_edge_from_graph()` update NetworkX in-place. Full `_rebuild()` only on `initialize()`. | One-time rebuild at startup, then zero-cost incremental. No full-graph-scan on every `add_edge()`. |
-| 🧪 **165 Unit Tests (35 new)** | `tests/test_graph.py` — SQLite schema validation, edge CRUD, lifecycle (reject/deprecate/reactivate), BFS depth-limiting, DFS chains, persistence, `get_stats()` coverage. | Verified on Python 3.12 — 165/165 pass. |
-
-Install: `pip install --upgrade hermes-nexus-memory`
 
 ### v2.1.0 — Auto-Discovery + Graph Analytics 🔄
 
@@ -54,6 +80,18 @@ Install: `pip install --upgrade hermes-nexus-memory`
 | ✨ **Convenience Tools** | `nexus_discover()` + `nexus_graph_report(as_text=True)` — direkte API-Aufrufe ohne manuelle Initialisierung | Ein Aufruf, fertig. `nexus_discover()` = scan + store, `nexus_graph_report()` = sofortige Analyse. |
 
 Proposed Edges sind standardmässig unsichtbar in `list_edges()` — nur bei `status='proposed'` sichtbar. `promote_edge()` macht sie active.
+
+### v2.0.0 — SkillGraph: Edge Store + Query Layer 🔗
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 🔗 **SkillGraph Edge Store** | SQLite-backed directed graph — `add_edge()` with 5 relation types (`depends_on`, `extends`, `contradicts`, `required_by`, `references`), 3 lifecycle statuses (`active`, `rejected`, `deprecated`), partial unique index `WHERE status='active'` | **Store WHY facts relate, not just WHAT they are.** No duplicate active edges. Full audit trail through lifecycle states. |
+| 🕸️ **Graph Query Layer** | NetworkX in-memory cache — BFS with depth-limit (`get_related()`), DFS chain detection (`get_path()`), symmetric `contradicts` edges auto-inserted. Incremental updates — no full rebuild on mutation. | Query relationships in milliseconds. Multi-hop paths for reasoning chains. Zero-cost updates after one-time startup rebuild. |
+| 🏛️ **Schema-First Design** | `EdgeRelation` enum + `EdgeStatus` enum in `schema.py`. SQLite = Source of Truth, NetworkX = readonly cache. `write_to_store()` before `sync_to_cache()`. | **Data integrity before performance.** The schema is the contract — everything validates against it before it touches the store. |
+| 🔄 **Incremental Graph Updates** | `_add_edge_to_graph()` / `_remove_edge_from_graph()` update NetworkX in-place. Full `_rebuild()` only on `initialize()`. | One-time rebuild at startup, then zero-cost incremental. No full-graph-scan on every `add_edge()`. |
+| 🧪 **165 Unit Tests (35 new)** | `tests/test_graph.py` — SQLite schema validation, edge CRUD, lifecycle (reject/deprecate/reactivate), BFS depth-limiting, DFS chains, persistence, `get_stats()` coverage. | Verified on Python 3.12 — 165/165 pass. |
+
+Install: `pip install --upgrade hermes-nexus-memory`
 
 ### v1.9.0 — Skill Export 🎯
 
@@ -167,44 +205,6 @@ Install: `pip install hermes-nexus-memory[hybrid]`
 | 🛡️ **Hybrid Retrieval** | BM25 + Vector + Reciprocal Rank Fusion | Kills RAG poisoning — hybrid search catches what pure vector misses |
 | 🏷️ **Source Tier Boosting** | Trust-ranked sources (🟢🟡🔴) | Prioritizes your own data, downgrades untrusted inputs |
 | 🔍 **Belief Drift Detection** | Scores memory health 0–10 | Finds stale entries *before* they corrupt your agent |
-
----
-
-## Quick Start
-
-### 🤖 Tell your agent to install it
-
-Send this prompt to your Hermes agent:
-
-```
-Read https://raw.githubusercontent.com/Neboy72/hermes-nexus-memory/main/AGENTS.md and follow the installation instructions.
-```
-
-Your agent will check prerequisites, install everything, configure the provider, and verify. Zero manual steps.
-
-### 🛠️ Or install manually
-
-```bash
-# Install the plugin
-curl -sL https://raw.githubusercontent.com/Neboy72/hermes-nexus-memory/main/install.sh | bash
-
-# Or use the built-in wizard:
-hermes memory setup   # → Select "nexus" → Pick embedding provider → Done.
-```
-
-Restart your gateway (from terminal, not inside agent chat):
-
-```bash
-hermes gateway restart
-```
-
-### Add Hybrid Retrieval (optional, recommended)
-
-```bash
-pip install bm25s
-```
-
-That's it. Hybrid search activates automatically when `bm25s` is installed.
 
 ---
 
@@ -357,8 +357,11 @@ One plugin. Three backends. Same tools, same API, same results.
 | 🔄 **Staging + Rollback** | ❌ | ❌ | ❌ | ❌ | **✅ `create_pending()` → `promote()` → `deprecate()` → `rollback()`** |
 | 🎯 **Skill Export** | ❌ | ❌ | ❌ | ❌ | **✅ `nexus-export --deploy` (Facts → SKILL.md)** |
 | 🔗 **SkillGraph (Edge Store)** | ❌ | ❌ | ❌ | ❌ | **✅ SQLite + NetworkX — 5 relation types, BFS/DFS, incremental updates** |
+| 🔄 **Auto-Discovery** | ❌ | ❌ | ❌ | ❌ | **✅ Embedding-basiert + heuristische Klassifikation — 0 Token-Kosten** |
+| 📊 **Graph Analytics** | ❌ | ❌ | ❌ | ❌ | **✅ Hub-Scores, Knowledge-Gaps, Connected Components** |
+| 🚀 **Graph Boost** | ❌ | ❌ | ❌ | ❌ | **✅ Such-Ranking boostet vernetzte Facts (1.0 + degree × 0.05)** |
 | 🌐 External APIs | Gemini required | None | Cloud API required | Cloud / PostgreSQL | **Optional** |
-| 📦 Code size | ~50K TypeScript | ~1.5K Python | Managed service | Managed service | **~2.2K Python** |
+| 📦 Code size | ~50K TypeScript | ~1.5K Python | Managed service | Managed service | **~7.4K Python** |
 | ⏱️ Setup time | 30+ min + OAuth | 1 command | API key + signup | Postgres + pgvector | **1 command** |
 
 *Mem0 lists staleness as an "open problem" in their 2026 report but does not ship a solution.*
@@ -395,7 +398,7 @@ One plugin. Three backends. Same tools, same API, same results.
 
 MIT — use it, modify it, ship it.
 
-[comment]: <> (last refreshed 2026-05-24)
+[comment]: <> (last refreshed 2026-05-27)
 
 ---
 
