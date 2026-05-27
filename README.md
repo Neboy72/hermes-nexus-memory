@@ -19,7 +19,7 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 
 **No API keys needed. Local by default — cloud if you want.**
 
-👉🏻 click [![🤖 Bot Self-Install](https://img.shields.io/badge/🤖%20Bot%20Self--Install-blue?style=flat-square)](AGENTS.md) &nbsp;&nbsp; 👉🏻 click [![⭐ Star on GitHub](https://img.shields.io/badge/⭐%20Star%20on%20GitHub-gold?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory)
+👉🏻 click [![🤖 Bot Self-Install](https://img.shields.io/badge/🤖%20Bot%20Self--Install-blue?style=for-the-badge)](AGENTS.md) &nbsp;&nbsp; 👉🏻 click [![⭐ Star on GitHub](https://img.shields.io/badge/⭐%20Star%20on%20GitHub-gold?style=for-the-badge)](https://github.com/Neboy72/hermes-nexus-memory)
 
 ---
 
