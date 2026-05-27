@@ -193,7 +193,7 @@ hermes status | grep -i nexus
 # nexus_remember(content="Primary API key goes in .env", category="config", tier=3)
 # nexus_search(query="installed successfully", limit=1)
 
-# Note: v2.0.0 introduces SkillGraph — Edge Store + Graph Query Layer for fact relationships.
+# Note: v2.1.0 introduces Auto-Discovery + Graph Analytics — automatic relation detection and knowledge-gap analysis.
 # - nexus/graph/ module: add_edge(), get_related(), get_path() via BFS/DFS
 # - SQLite-backed with NetworkX in-memory cache, incremental updates
 # Note: v1.9.0 introduces Skill Export — turn canonical facts into SKILL.md files.
@@ -209,7 +209,7 @@ hermes status | grep -i nexus
 After installation, report:
 
 ```
-✅ Nexus Memory v2.0.0 installed
+✅ Nexus Memory v2.1.0 installed
 
 • Embedding: <provider chosen>
 • Hybrid Retrieval: <installed/skipped>
@@ -217,6 +217,9 @@ After installation, report:
 • Memory Expiry: ✅ active (policies: static/normal/volatile)
 • Skill Export: ✅ available (nexus-export CLI)
 • Qdrant: running on localhost:6333
+• Auto-Discovery: ✅ automatic relation detection for canonical facts
+• Graph Analytics: ✅ hub scores, knowledge gaps, cluster analysis
+• Graph Boost: ✅ connectivity boosts hybrid search rankings
 • Auto-Update: ✅ I'll check for new versions at startup
 
 Tools available: nexus_search, nexus_remember, nexus_forget
@@ -230,7 +233,7 @@ If one is found, it tells the user — no watch, no email, nothing manual needed
 The check runs automatically via the code in **Step 0** above. When a new release
 appears, the user sees:
 
-> 📢 New version v2.0.0 available (you have v1.9.0). Update by saying: upgrade nexus memory
+> 📢 New version v2.1.0 available (you have v2.0.0). Update by saying: upgrade nexus memory
 
 The bot then performs the upgrade on its own (Step 2b). No manual intervention needed.
 
