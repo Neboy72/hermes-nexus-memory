@@ -73,13 +73,13 @@ That's it. Hybrid search activates automatically when `bm25s` is installed.
 
 | Feature | What it does | Why it matters |
 |---------|-------------|---------------|
-| 🔄 **Auto-Discovery** | `AutoDiscovery.discover_all()` — scannt alle canonical Facts, findet Similarity via Qdrant (O(n·k)), klassifiziert Relationen heuristisch (Wikilinks, "siehe/vgl.", Keyword-Overlap), dedupt gegen SQLite, speichert als `active` (≥0.85) oder `proposed` (<0.85) | **Zero-Token Relationserkennung.** Kein LLM, keine neuen Dependencies. Facts verbinden sich automatisch — ohne manuelle Edges. |
-| 📊 **Graph Analytics** | `GraphAnalytics.full_report()` — Hub-Scores (meistvernetzte Facts), Isolation-Scores, Knowledge-Gaps, Connected Components (Weakly), Relation-Distribution | **Verstehe deinen Wissensgraphen.** Sieh auf einen Blick welche Facts isoliert sind (= Wissenslücken) und welche am stärksten vernetzt. |
-| 🚀 **Graph Boost** | `HybridRetriever.search_hybrid(graph_boost=True)` — boostet Suchergebnisse um `1.0 + degree * 0.05` basierend auf Graph-Konnektivität | **Vernetzte Facts ranken höher.** Ein Fact mit 10 Kanten kriegt 1.5x Boost, ein isoliertes bleibt bei 1.0x. |
-| 🧪 **219 Unit Tests** | 45 neue Tests für Discovery + Analytics + Graph Boost + Proposed Edges | Alle grün auf Python 3.12 in 2.6s. |
-| ✨ **Convenience Tools** | `nexus_discover()` + `nexus_graph_report(as_text=True)` — direkte API-Aufrufe ohne manuelle Initialisierung | Ein Aufruf, fertig. `nexus_discover()` = scan + store, `nexus_graph_report()` = sofortige Analyse. |
+| 🔄 **Auto-Discovery** | `AutoDiscovery.discover_all()` — scans all canonical Facts, finds similarity via Qdrant (O(n·k)), classifies relations heuristically (wikilinks, "see also"/"cf.", keyword overlap), deduplicates against SQLite, stores as `active` (≥0.85) or `proposed` (<0.85) | **Zero-token relation discovery.** No LLM, no new dependencies. Facts connect themselves — no manual edges needed. |
+| 📊 **Graph Analytics** | `GraphAnalytics.full_report()` — Hub scores (most-connected facts), isolation scores, knowledge gaps, connected components (weakly), relation distribution | **Understand your knowledge graph.** See at a glance which facts are isolated (= knowledge gaps) and which are most connected. |
+| 🚀 **Graph Boost** | `HybridRetriever.search_hybrid(graph_boost=True)` — boosts search results by `1.0 + degree * 0.05` based on graph connectivity | **Connected facts rank higher.** A fact with 10 edges gets 1.5x boost, an isolated one stays at 1.0x. |
+| 🧪 **219 Unit Tests** | 45 new tests for Discovery + Analytics + Graph Boost + Proposed Edges | All green on Python 3.12 in 2.6s. |
+| ✨ **Convenience Tools** | `nexus_discover()` + `nexus_graph_report(as_text=True)` — direct API calls without manual initialization | One call, done. `nexus_discover()` = scan + store, `nexus_graph_report()` = instant analysis. |
 
-Proposed Edges sind standardmässig unsichtbar in `list_edges()` — nur bei `status='proposed'` sichtbar. `promote_edge()` macht sie active.
+Proposed Edges are invisible by default in `list_edges()` — only visible with `status='proposed'`. `promote_edge()` makes them active.
 
 ### v2.0.0 — SkillGraph: Edge Store + Query Layer 🔗
 
@@ -357,9 +357,9 @@ One plugin. Three backends. Same tools, same API, same results.
 | 🔄 **Staging + Rollback** | ❌ | ❌ | ❌ | ❌ | **✅ `create_pending()` → `promote()` → `deprecate()` → `rollback()`** |
 | 🎯 **Skill Export** | ❌ | ❌ | ❌ | ❌ | **✅ `nexus-export --deploy` (Facts → SKILL.md)** |
 | 🔗 **SkillGraph (Edge Store)** | ❌ | ❌ | ❌ | ❌ | **✅ SQLite + NetworkX — 5 relation types, BFS/DFS, incremental updates** |
-| 🔄 **Auto-Discovery** | ❌ | ❌ | ❌ | ❌ | **✅ Embedding-basiert + heuristische Klassifikation — 0 Token-Kosten** |
-| 📊 **Graph Analytics** | ❌ | ❌ | ❌ | ❌ | **✅ Hub-Scores, Knowledge-Gaps, Connected Components** |
-| 🚀 **Graph Boost** | ❌ | ❌ | ❌ | ❌ | **✅ Such-Ranking boostet vernetzte Facts (1.0 + degree × 0.05)** |
+| 🔄 **Auto-Discovery** | ❌ | ❌ | ❌ | ❌ | **✅ Embedding-based + heuristic classification — 0 token cost** |
+| 📊 **Graph Analytics** | ❌ | ❌ | ❌ | ❌ | **✅ Hub scores, knowledge gaps, connected components** |
+| 🚀 **Graph Boost** | ❌ | ❌ | ❌ | ❌ | **✅ Search ranking boosts connected facts (1.0 + degree × 0.05)** |
 | 🌐 External APIs | Gemini required | None | Cloud API required | Cloud / PostgreSQL | **Optional** |
 | 📦 Code size | ~50K TypeScript | ~1.5K Python | Managed service | Managed service | **~7.4K Python** |
 | ⏱️ Setup time | 30+ min + OAuth | 1 command | API key + signup | Postgres + pgvector | **1 command** |
