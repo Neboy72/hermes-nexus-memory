@@ -121,17 +121,32 @@ pip install -e ~/.hermes/hermes-nexus-memory[all]
 # Set memory provider to nexus
 hermes config set memory.provider nexus
 
-# Choose ONE embedding provider:
-# Option A: sentence-transformers (default, no API key needed, works offline)
+# --- LOCAL (no API key) ---
+# Option A (default): sentence-transformers — offline, zero setup
 hermes config set nexus-memory.embed_provider sentence-transformers
 
-# Option B: ollama (local, needs Ollama running)
+# Option B: ollama — local, needs Ollama running
 # First: ollama pull nomic-embed-text
 hermes config set nexus-memory.embed_provider ollama
 
-# Option C: voyage (cloud, best quality, needs API key)
+# --- CLOUD (API key required) ---
+# Option C (recommended) ⭐: voyage — best quality, 1024d, 32K context
 # Add VOYAGE_API_KEY to ~/.hermes/.env
 hermes config set nexus-memory.embed_provider voyage
+
+# Option D: openai — most widely used embedding, 1536d
+# text-embedding-3-small (default) or text-embedding-3-large (higher quality)
+# Add OPENAI_API_KEY to ~/.hermes/.env
+hermes config set nexus-memory.embed_provider openai
+
+# Option E: google / vertex ai — Google ecosystem, free tier available
+# Uses text-embedding-004 or gemini-embedding-001 (768-3072d)
+# Add GOOGLE_API_KEY to ~/.hermes/.env
+hermes config set nexus-memory.embed_provider google
+
+# Option F: jina — best value ($0.02/1M tokens), 1024d, 8K context
+# Add JINA_API_KEY to ~/.hermes/.env
+hermes config set nexus-memory.embed_provider jina
 ```
 
 If the user has no preference, use **sentence-transformers** — it works immediately with zero setup.
