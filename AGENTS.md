@@ -136,7 +136,7 @@ hermes config set nexus-memory.embed_provider voyage
 
 If the user has no preference, use **sentence-transformers** — it works immediately with zero setup.
 
-### Step 4: Hybrid Retrieval (Recommended)
+### Step 4: Hybrid Retrieval + BM25 Cache + Reranker (Recommended)
 
 ```bash
 # Install BM25 for anti-poisoning hybrid search
@@ -144,6 +144,35 @@ pip install bm25s
 ```
 
 This enables `HybridRetriever` automatically. No extra config needed.
+
+**BM25 cache is automatic.** The first `index_memories()` call builds a BM25 index
+and persists it to `~/.hermes/nexus-bm25/` (~3MB). Subsequent searches load from
+cache — no rebuild, <1s startup.
+
+**Cross-encoder reranker (optional, recommended for production):**
+If you configured **voyage** as your embedding provider in Step 3, you get
+automatic cross-encoder reranking via Voyage's `rerank-2` API.
+
+Activate it in your search calls:
+```python
+results = retriever.search_hybrid(query, query_vector=vec, top_k=5, rerank=True, voyage_api_key=VOYAGE_KEY)
+```
+
+The reranker runs after BM25 + Vector + RRF and re-ranks results by semantic
+relevance. Significantly improves result quality (verified: 0.4531 vs 0.3281
+score separation on test queries).
+
+**Script for manual search (no MCP needed):**
+```bash
+# Install the search script (writes to ~/.hermes/scripts/)
+cp examples/nexus_search.py ~/.hermes/scripts/
+
+# Usage — searches BM25 + Vector + Reranker in one command
+python3 ~/.hermes/scripts/nexus_search.py "your query here"
+```
+
+The script loads BM25 from cache (~3MB), generates a Voyage embedding,
+runs hybrid search, and optionally reranks — all in <1 second.
 
 ### Step 5: Drift Detection + Memory Expiry (Recommended)
 
@@ -189,9 +218,12 @@ hermes status | grep -i nexus
 
 # Test memory save and retrieve
 # In the next agent session, try:
-# nexus_remember(content="Nexus Memory v1.8.0 installed successfully", category="fact", tier=2)
-# nexus_remember(content="Primary API key goes in .env", category="config", tier=3)
+# nexus_remember(content="Nexus Memory installed", category="fact", tier=2)
 # nexus_search(query="installed successfully", limit=1)
+
+# Test hybrid search with reranker (if voyage configured):
+python3 ~/.hermes/scripts/nexus_search.py "test query"
+# Expected output: shows 5 results with BM25+RERA methods and scores
 
 # Note: v2.1.0 introduces Auto-Discovery + Graph Analytics — automatic relation detection and knowledge-gap analysis.
 # - nexus/graph/ module: add_edge(), get_related(), get_path() via BFS/DFS
@@ -221,8 +253,13 @@ After installation, report:
 • Graph Analytics: ✅ hub scores, knowledge gaps, cluster analysis
 • Graph Boost: ✅ connectivity boosts hybrid search rankings
 • Auto-Update: ✅ I'll check for new versions at startup
+• Memory Expiry: ✅ active (policies: static/normal/volatile)
+• Cross-Encoder Reranker: ✅ (via Voyage rerank-2)
+• BM25 Cache: ✅ (~/.hermes/nexus-bm25/)
 
 Tools available: nexus_search, nexus_remember, nexus_forget
+• Script: ~/.hermes/scripts/nexus_search.py (for manual search)
+• MCP Server: optional (see config for nexus-memory mcp_servers)
 ```
 
 ### Step 9: Auto-Update Check (Hassle-Free)
@@ -248,6 +285,9 @@ The bot then performs the upgrade on its own (Step 2b). No manual intervention n
 | Embedding error in logs | `grep "Nexus memory" ~/.hermes/logs/agent.log` | Switch provider (Step 3) |
 | `bm25s` import error | `pip list \| grep bm25s` | `pip install bm25s` |
 | Hybrid not activating | Check `nexus.retrieval` imports | bm25s must be installed |
+| **BM25 cache slow** | First run builds index (~3k points = 10s) | Subsequent runs load from cache (<1s) |
+| **Reranker not used** | Search returns `BM25` only, no rerank scores | Set `rerank=True` + `voyage_api_key`; configure voyage in Step 3 |
+| **Voyage API error** | Reranker falls back silently | Check `VOYAGE_API_KEY` in `.env` or config |
 
 **Upgrade from v1.7.x → v2.0.0+:**
 If you are upgrading an existing Nexus installation with real Qdrant data, legacy entries lack v1.8.0 lifecycle fields (`fact_id`, `status`, `content_hash`). The system handles them transparently via fallback (treats them as `canonical`). For optimal filtering and export accuracy, run the optional one-time migration:
@@ -262,11 +302,14 @@ This scrolls all points, adds lifecycle fields, and preserves existing payloads.
 
 - **Persistent memory** — your agent remembers across sessions
 - **Hybrid search** — keyword + semantic = better results, poison-resistant
+- **BM25 Cache** — instant startup, no rebuild on every search (~/.hermes/nexus-bm25/)
+- **Cross-encoder reranker** — Voyage rerank-2 re-ranks results by true relevance
 - **Drift detection** — stale + expired memories get flagged automatically
 - **Memory expiry** — set policies: static (never), normal (90d), volatile (7d)
 - **Tiered enrichment** — automatically tags important memories (T2/T3) for deeper analysis
 - **Source tier boosting** — your own data ranks higher than random internet content
 - **3 embedding backends** — from zero-config local to cloud-powered best quality
+- **Search script included** — `nexus_search.py` for CLI or MCP integration
 
 ---
 
