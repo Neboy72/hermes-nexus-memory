@@ -28,9 +28,9 @@ You are a Hermes Agent (or compatible). The user wants Nexus Memory installed or
 
 ```bash
 # Check if Nexus Memory is already configured
-hermes config get memory.provider 2>/dev/null
+grep "provider: nexus" ~/.hermes/config.yaml 2>/dev/null | awk '{print $2}'
 # If "nexus" → this is an UPGRADE, skip to Step 2b
-# If empty/other → this is a FRESH INSTALL, continue with Step 1
+# If empty → this is a FRESH INSTALL, continue with Step 1
 
 # Check current version
 pip show hermes-nexus-memory 2>/dev/null | grep Version
