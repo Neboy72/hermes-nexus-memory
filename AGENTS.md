@@ -149,11 +149,12 @@ This enables `HybridRetriever` automatically. No extra config needed.
 and persists it to `~/.hermes/nexus-bm25/` (~3MB). Subsequent searches load from
 cache — no rebuild, <1s startup.
 
-**Cross-encoder reranker (optional, recommended for production):**
-If you configured **voyage** as your embedding provider in Step 3, you get
-automatic cross-encoder reranking via Voyage's `rerank-2` API.
+**Cross-encoder reranker (optional, Voyage only):**
+If you have **voyage** as your embedding provider, you get optional cross-encoder
+reranking via Voyage's `rerank-2` API for even better result quality.
+Without Voyage, BM25 + Vector + RRF still work great — the reranker is a bonus.
 
-Activate it in your search calls:
+Activate reranker in your search calls (only if voyage configured):
 ```python
 results = retriever.search_hybrid(query, query_vector=vec, top_k=5, rerank=True, voyage_api_key=VOYAGE_KEY)
 ```
@@ -286,8 +287,8 @@ The bot then performs the upgrade on its own (Step 2b). No manual intervention n
 | `bm25s` import error | `pip list \| grep bm25s` | `pip install bm25s` |
 | Hybrid not activating | Check `nexus.retrieval` imports | bm25s must be installed |
 | **BM25 cache slow** | First run builds index (~3k points = 10s) | Subsequent runs load from cache (<1s) |
-| **Reranker not used** | Search returns `BM25` only, no rerank scores | Set `rerank=True` + `voyage_api_key`; configure voyage in Step 3 |
-| **Voyage API error** | Reranker falls back silently | Check `VOYAGE_API_KEY` in `.env` or config |
+| **Reranker not used** | Search returns BM25 only, no rerank scores | Reranker is Voyage-only; use voyage provider or skip reranker |
+| **Voyage API error** | Reranker falls back to BM25+Vector silently | Check VOYAGE_API_KEY; without Voyage, search still works |
 
 **Upgrade from v1.7.x → v2.0.0+:**
 If you are upgrading an existing Nexus installation with real Qdrant data, legacy entries lack v1.8.0 lifecycle fields (`fact_id`, `status`, `content_hash`). The system handles them transparently via fallback (treats them as `canonical`). For optimal filtering and export accuracy, run the optional one-time migration:
@@ -303,7 +304,7 @@ This scrolls all points, adds lifecycle fields, and preserves existing payloads.
 - **Persistent memory** — your agent remembers across sessions
 - **Hybrid search** — keyword + semantic = better results, poison-resistant
 - **BM25 Cache** — instant startup, no rebuild on every search (~/.hermes/nexus-bm25/)
-- **Cross-encoder reranker** — Voyage rerank-2 re-ranks results by true relevance
+- **Cross-encoder reranker (Voyage only)** — rerank-2 re-ranks results by true relevance
 - **Drift detection** — stale + expired memories get flagged automatically
 - **Memory expiry** — set policies: static (never), normal (90d), volatile (7d)
 - **Tiered enrichment** — automatically tags important memories (T2/T3) for deeper analysis
