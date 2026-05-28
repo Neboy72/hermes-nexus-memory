@@ -353,18 +353,21 @@ class HybridRetriever:
         query_vector: list[float] | None = None,
         top_k: int = 10,
         graph_boost: bool = False,
+        rerank: bool = False,
+        voyage_api_key: str | None = None,
     ) -> list[dict]:
-        """Full hybrid search: BM25 + (optional) vector + RRF + tier + graph boost.
+        """Full hybrid search: BM25 + (optional) vector + RRF + tier + graph + rerank.
 
         Args:
             query: Search query string.
             query_vector: Optional pre-computed embedding for vector search.
             top_k: Number of results to return.
-            graph_boost: If True, boost results by graph connectivity
-                         (requires ``skillgraph`` in constructor).
+            graph_boost: If True, boost results by graph connectivity.
+            rerank: If True, re-rank results via Voyage Rerank API.
+            voyage_api_key: Required if rerank=True.
 
         Returns:
-            List of dicts with id, rrf_score, tier, methods, text.
+            List of dicts with id, rrf_score, tier, methods, text, (rerank_score).
         """
         bm25_hits = self.search_bm25(query, top_k=top_k * 2)
 
@@ -382,7 +385,42 @@ class HybridRetriever:
         if graph_boost:
             fused = self._graph_boost(fused)
 
+        # Cross-encoder rerank via Voyage
+        if rerank and voyage_api_key and fused:
+            fused = self._rerank(fused, query, voyage_api_key)
+
         return fused[:top_k]
+
+    def _rerank(self, results: list[dict], query: str, voyage_api_key: str) -> list[dict]:
+        """Re-rank results via Voyage Rerank API (cross-encoder)."""
+        if not HAS_REQUESTS:
+            return results
+
+        docs = [r.get('text', '')[:1000] for r in results]
+        try:
+            resp = requests.post(
+                'https://api.voyageai.com/v1/rerank',
+                headers={'Authorization': f'Bearer {voyage_api_key}'},
+                json={'query': query, 'documents': docs, 'model': 'rerank-2', 'top_k': len(docs)},
+                timeout=15
+            )
+            if resp.status_code != 200:
+                return results
+            ranking = resp.json().get('data', [])
+            reranked = []
+            for item in sorted(ranking, key=lambda x: x.get('relevance_score', 0), reverse=True):
+                idx = item.get('index', 0)
+                if idx < len(results):
+                    r = dict(results[idx])
+                    r['rerank_score'] = item.get('relevance_score', 0.0)
+                    methods = list(r.get('methods', []))
+                    if 'rerank' not in methods:
+                        methods.append('rerank')
+                    r['methods'] = methods
+                    reranked.append(r)
+            return reranked if reranked else results
+        except Exception:
+            return results
 
     # ── Internal ────────────────────────────────────────────────────────────
 
