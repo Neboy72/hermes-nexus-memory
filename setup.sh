@@ -10,7 +10,7 @@ set -euo pipefail
 
 REPO="hermes-nexus-memory"
 REPO_URL="https://github.com/Neboy72/${REPO}.git"
-HERMES_HOME="${HOME}/.hermes"
+HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 INSTALL_DIR="${HERMES_HOME}/${REPO}"
 VENV_DIR="${INSTALL_DIR}/.venv"
 
@@ -69,7 +69,7 @@ echo -e "${BLUE}── Step 1: Prerequisites ───────────�
 PYTHON=""
 for cmd in python3.12 python3.11 python3; do
     if command -v "$cmd" &>/dev/null; then
-        VER=$("$cmd" --version 2>&1 | grep -oP '\d+\.\d+')
+        VER=$("$cmd" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
         MAJOR=$(echo "$VER" | cut -d. -f1)
         MINOR=$(echo "$VER" | cut -d. -f2)
         if [ "$MAJOR" -ge 3 ] && [ "$MINOR" -ge 11 ]; then
@@ -219,23 +219,23 @@ ok "Package installed: hermes-nexus-memory $(pip show hermes-nexus-memory 2>/dev
 echo ""
 echo -e "${BLUE}── Step 4: Embedding Provider ──────────────────${NC}"
 
-detect_embed_provider() {
+select_embed_provider() {
     # Try sentence-transformers (always available after [all] install)
-    local ST_OK=false
-    if $PYTHON -c "from sentence_transformers import SentenceTransformer; m = SentenceTransformer('all-MiniLM-L6-v2'); print('ok')" 2>/dev/null; then
+    ST_OK=false
+    if "$PYTHON" -c "from sentence_transformers import SentenceTransformer; m = SentenceTransformer('all-MiniLM-L6-v2')" &>/dev/null; then
         ST_OK=true
     fi
 
     # Try Ollama
-    local OLLAMA_OK=false
+    OLLAMA_OK=false
     if curl -sf http://127.0.0.1:11434/api/tags &>/dev/null; then
-        if curl -sf http://127.0.0.1:11434/api/tags 2>/dev/null | $PYTHON -c "import json,sys; d=json.load(sys.stdin); exit(0 if any('nomic-embed' in m['name'] for m in d.get('models',[])) else 1)" 2>/dev/null; then
+        if curl -sf http://127.0.0.1:11434/api/tags 2>/dev/null | "$PYTHON" -c "import json,sys; d=json.load(sys.stdin); exit(0 if any('nomic-embed' in m['name'] for m in d.get('models',[])) else 1)" 2>/dev/null; then
             OLLAMA_OK=true
         fi
     fi
 
     # Try Voyage
-    local VOYAGE_OK=false
+    VOYAGE_OK=false
     if [ -n "${VOYAGE_API_KEY:-}" ]; then
         VOYAGE_OK=true
     elif grep -q "VOYAGE_API_KEY" "${HERMES_HOME}/.env" 2>/dev/null; then
@@ -243,7 +243,7 @@ detect_embed_provider() {
     fi
 
     # Try OpenAI
-    local OPENAI_OK=false
+    OPENAI_OK=false
     if [ -n "${OPENAI_API_KEY:-}" ]; then
         OPENAI_OK=true
     elif grep -q "OPENAI_API_KEY" "${HERMES_HOME}/.env" 2>/dev/null; then
@@ -251,7 +251,7 @@ detect_embed_provider() {
     fi
 
     # Jina
-    local JINA_OK=false
+    JINA_OK=false
     if [ -n "${JINA_API_KEY:-}" ]; then
         JINA_OK=true
     elif grep -q "JINA_API_KEY" "${HERMES_HOME}/.env" 2>/dev/null; then
@@ -260,59 +260,54 @@ detect_embed_provider() {
 
     echo ""
     info "Detected embedding providers:"
-    $ST_OK     && ok  "  sentence-transformers (offline, gratis, 384d)" || warn "  sentence-transformers (not available)"
-    $OLLAMA_OK && ok  "  Ollama nomic-embed-text (lokal, 768d)"       || warn "  Ollama nomic-embed-text (not found)"
-    $VOYAGE_OK && ok  "  Voyage (API Key gefunden, 1024d, ⭐ empfohlen)" || warn "  Voyage (kein API Key)"
-    $OPENAI_OK && ok  "  OpenAI (API Key gefunden, 1536d)"            || warn "  OpenAI (kein API Key)"
-    $JINA_OK   && ok  "  Jina (API Key gefunden, 1024d, günstig)"     || warn "  Jina (kein API Key)"
+    $ST_OK     && ok "  sentence-transformers (offline, gratis, 384d)" || warn "  sentence-transformers (not available)"
+    $OLLAMA_OK && ok "  Ollama nomic-embed-text (lokal, 768d)"       || warn "  Ollama nomic-embed-text (not found)"
+    $VOYAGE_OK && ok "  Voyage (API Key gefunden, 1024d, ⭐ empfohlen)" || warn "  Voyage (kein API Key)"
+    $OPENAI_OK && ok "  OpenAI (API Key gefunden, 1536d)"            || warn "  OpenAI (kein API Key)"
+    $JINA_OK   && ok "  Jina (API Key gefunden, 1024d, günstig)"     || warn "  Jina (kein API Key)"
     echo ""
 
     # Auto-select best available
-    local SELECTED=""
+    PROVIDER="sentence-transformers"  # fallback
     if $VOYAGE_OK; then
-        SELECTED="voyage"
+        PROVIDER="voyage"
     elif $OPENAI_OK; then
-        SELECTED="openai"
+        PROVIDER="openai"
     elif $OLLAMA_OK; then
-        SELECTED="ollama"
+        PROVIDER="ollama"
     elif $JINA_OK; then
-        SELECTED="jina"
-    elif $ST_OK; then
-        SELECTED="sentence-transformers"
-    else
-        SELECTED="sentence-transformers"
-        warn "No embedding provider fully verified — defaulting to sentence-transformers"
+        PROVIDER="jina"
     fi
 
-    echo -e "  Recommended: ${GREEN}${SELECTED}${NC}"
-    read -rp "  Use ${SELECTED}? (Enter=yes, or type: voyage/openai/ollama/jina/sentence-transformers): " PROVIDER_INPUT
-    PROVIDER="${PROVIDER_INPUT:-$SELECTED}"
+    echo -e "  Recommended: ${GREEN}${PROVIDER}${NC}"
+    read -rp "  Use ${PROVIDER}? (Enter=yes, or type: voyage/openai/ollama/jina/sentence-transformers): " PROVIDER_INPUT
+    PROVIDER="${PROVIDER_INPUT:-$PROVIDER}"
 
     # Validate choice
     case "$PROVIDER" in
         voyage)
             if ! $VOYAGE_OK; then
                 warn "Voyage selected but no API key found."
-                read -rp "  Enter your Voyage API Key (or press Enter to abort): " VOYAGE_KEY
+                read -rp "  Enter your Voyage API Key (or press Enter to cancel → use sentence-transformers): " VOYAGE_KEY
                 if [ -n "$VOYAGE_KEY" ]; then
-                    echo "VOYAGE_API_KEY=${VOYAGE_KEY}" >> "${HERMES_HOME}/.env"
+                    echo "VOYAGE_API_KEY=$VOYAGE_KEY" >> "${HERMES_HOME}/.env"
                     ok "Voyage API key saved to ${HERMES_HOME}/.env"
                 else
-                    err "No key provided. Aborting."
-                    exit 1
+                    warn "Defaulting to sentence-transformers"
+                    PROVIDER="sentence-transformers"
                 fi
             fi
             ;;
         openai)
             if ! $OPENAI_OK; then
                 warn "OpenAI selected but no API key found."
-                read -rp "  Enter your OpenAI API Key (or press Enter to abort): " OPENAI_KEY
+                read -rp "  Enter your OpenAI API Key (or press Enter to cancel → use sentence-transformers): " OPENAI_KEY
                 if [ -n "$OPENAI_KEY" ]; then
-                    echo "OPENAI_API_KEY=${OPENAI_KEY}" >> "${HERMES_HOME}/.env"
+                    echo "OPENAI_API_KEY=$OPENAI_KEY" >> "${HERMES_HOME}/.env"
                     ok "OpenAI API key saved to ${HERMES_HOME}/.env"
                 else
-                    err "No key provided. Aborting."
-                    exit 1
+                    warn "Defaulting to sentence-transformers"
+                    PROVIDER="sentence-transformers"
                 fi
             fi
             ;;
@@ -320,37 +315,37 @@ detect_embed_provider() {
             if ! $OLLAMA_OK; then
                 warn "Ollama selected but nomic-embed-text not found."
                 info "Pulling nomic-embed-text..."
-                ollama pull nomic-embed-text || err "Failed to pull model"
+                ollama pull nomic-embed-text 2>/dev/null || {
+                    warn "Failed to pull model. Defaulting to sentence-transformers"
+                    PROVIDER="sentence-transformers"
+                }
             fi
             ;;
         jina)
             if ! $JINA_OK; then
                 warn "Jina selected but no API key found."
-                read -rp "  Enter your Jina API Key (or press Enter to abort): " JINA_KEY
+                read -rp "  Enter your Jina API Key (or press Enter to cancel → use sentence-transformers): " JINA_KEY
                 if [ -n "$JINA_KEY" ]; then
-                    echo "JINA_API_KEY=${JINA_KEY}" >> "${HERMES_HOME}/.env"
+                    echo "JINA_API_KEY=$JINA_KEY" >> "${HERMES_HOME}/.env"
                     ok "Jina API key saved to ${HERMES_HOME}/.env"
                 else
-                    err "No key provided. Aborting."
-                    exit 1
+                    warn "Defaulting to sentence-transformers"
+                    PROVIDER="sentence-transformers"
                 fi
             fi
             ;;
-        sentence-transformers)
-            if ! $ST_OK; then
-                warn "sentence-transformers not available. Installing..."
-                pip install sentence-transformers --quiet
-                ok "sentence-transformers installed"
-            fi
-            ;;
-        *)
-            err "Unknown provider: $PROVIDER"
-            exit 1
-            ;;
     esac
 
-    echo "$PROVIDER"
+    # Final fallback
+    if [ "$PROVIDER" = "sentence-transformers" ] && ! $ST_OK; then
+        info "Installing sentence-transformers..."
+        pip install sentence-transformers --quiet
+        ok "sentence-transformers installed"
+    fi
 }
+
+# Run provider selection
+select_embed_provider
 
 # Write the MCP server script
 # ──────────────────────────────────────────────────────────────────────
