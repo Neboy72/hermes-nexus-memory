@@ -95,9 +95,13 @@ class HybridRetriever:
         self.qdrant_url = f"http://{qdrant_host}:{qdrant_port}"
         self.collection = collection_name
         self._skillgraph = skillgraph  # Optional for graph_boost
-        self._bm25 = None
         self._ids = []
         self._texts = []
+        self._bm25 = None
+
+        # Try to load cached BM25 index
+        self._index_dir = Path.home() / ".hermes" / "nexus-bm25"
+        self._load_bm25_cache()
 
     # ── Indexing ────────────────────────────────────────────────────────────
 
@@ -148,6 +152,7 @@ class HybridRetriever:
             corpus_tokens = bm25s.tokenize(self._texts)
             self._bm25 = bm25s.BM25()
             self._bm25.index(corpus_tokens)
+            self._save_bm25_cache()
 
         return {
             "indexed": len(self._ids),
@@ -240,14 +245,54 @@ class HybridRetriever:
             "bm25_built": self._bm25 is not None,
         }
 
+    # ── BM25 Cache ───────────────────────────────────────────────────────────
+
+    def _load_bm25_cache(self) -> bool:
+        """Load persisted BM25 index from disk. Returns True if loaded."""
+        idx_dir = self._index_dir / "bm25"
+        ids_file = self._index_dir / "ids.json"
+        texts_file = self._index_dir / "texts.json"
+
+        if not (idx_dir.is_dir() and ids_file.exists() and texts_file.exists()):
+            return False
+
+        try:
+            self._bm25 = bm25s.BM25.load(idx_dir)
+            with open(ids_file) as f:
+                self._ids = json.load(f)
+            with open(texts_file) as f:
+                self._texts = json.load(f)
+            return True
+        except Exception:
+            self._bm25 = None
+            self._ids = []
+            self._texts = []
+            return False
+
+    def _save_bm25_cache(self) -> bool:
+        """Persist current BM25 index to disk. Returns True on success."""
+        if self._bm25 is None:
+            return False
+        try:
+            idx_dir = self._index_dir / "bm25"
+            idx_dir.mkdir(parents=True, exist_ok=True)
+            self._bm25.save(idx_dir)
+            with open(self._index_dir / "ids.json", "w") as f:
+                json.dump(self._ids, f)
+            with open(self._index_dir / "texts.json", "w") as f:
+                json.dump(self._texts, f)
+            return True
+        except Exception:
+            return False
+
     # ── Search ──────────────────────────────────────────────────────────────
 
     def search_bm25(self, query: str, top_k: int = 10) -> list[dict]:
         """Keyword search via BM25."""
         if self._bm25 is None:
             return []
-        query_tokens = bm25s.tokenize(query.lower())
-        results = self._bm25.retrieve(query_tokens, k=min(top_k, len(self._ids)))
+        query_tokens = bm25s.tokenize(query.lower(), show_progress=False)
+        results = self._bm25.retrieve(query_tokens, k=min(top_k, len(self._ids)), show_progress=False)
 
         hits = []
         for rank, doc_idx in enumerate(results.documents[0]):
@@ -288,10 +333,11 @@ class HybridRetriever:
         for rank, point in enumerate(r.json().get("result", [])):
             payload = point.get("payload", {})
             # Memory entries have "content", turn entries have user/assistant_content
-            text = payload.get("content") or (
-                payload.get("user_content", "")
-                + ("\n" + payload.get("assistant_content", "") if payload.get("assistant_content") else "")
-            )
+            text = str(payload.get("content") or "")
+            if not text:
+                uc = payload.get("user_content", "")
+                ac = payload.get("assistant_content", "")
+                text = (str(uc) if uc else "") + ("\n" + str(ac) if ac else "")
             hits.append({
                 "id": str(point.get("id", "")),
                 "score": point.get("score", 0.0),
