@@ -172,8 +172,9 @@ cp examples/nexus_search.py ~/.hermes/scripts/
 python3 ~/.hermes/scripts/nexus_search.py "your query here"
 ```
 
-The script loads BM25 from cache (~3MB), generates a Voyage embedding,
-runs hybrid search, and optionally reranks — all in <1 second.
+The script loads BM25 from cache (~3MB), tries Voyage for vector search
+(optional, needs API key), and falls back to BM25-only without it.
+Fully functional on local setup — no cloud key required.
 
 ### Step 5: Drift Detection + Memory Expiry (Recommended)
 
