@@ -328,6 +328,38 @@ This scrolls all points, adds lifecycle fields, and preserves existing payloads.
 - **3 embedding backends** — from zero-config local to cloud-powered best quality
 - **Search script included** — `nexus_search.py` for CLI or MCP integration
 
+### Step 7: MCP Server (optional)
+
+For AI agents that support the Model Context Protocol (Hermes, Claude Code, Cursor), Nexus Memory ships an MCP server that provides `nexus_search` as a tool.
+
+```yaml
+# Add to config.yaml mcp_servers:
+nexus-memory:
+  command: python3
+  args:
+    - mcp/main.py
+  env:
+    PATH: /path/to/hermes-agent/venv/bin:/usr/bin:/bin  # venv with mcp SDK
+```
+
+Or install the script standalone:
+```bash
+# Use the MCP server directly from repo, or copy standalone
+cp mcp/main.py ~/.hermes/scripts/nexus_mcp_server.py
+```
+
+Then configure:
+```yaml
+nexus-memory:
+  command: python3
+  args:
+    - /path/to/nexus_mcp_server.py
+  env:
+    PATH: /path/to/hermes-agent/venv/bin:/usr/bin:/bin
+```
+
+After adding the entry, restart your gateway to activate: `hermes gateway restart` (or equivalent).
+
 ---
 
 ## ⭐ Support Us
