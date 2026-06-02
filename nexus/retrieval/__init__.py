@@ -103,6 +103,36 @@ RRF_K = 60  # Reciprocal Rank Fusion constant
 class HybridRetriever:
     """Hybrid BM25 + Vector search with RRF and source-tier boosting."""
 
+    # Entity extraction patterns: (regex, type_label)
+    # Used for entity-aware retrieval boosting (v2.5.0)
+    _ENTITY_STOPWORDS: set[str] = {
+        "the", "a", "an", "in", "on", "at", "to", "for", "of", "with",
+        "and", "or", "but", "not", "this", "that", "was", "were", "had",
+        "been", "have", "has", "did", "got", "get", "went", "gone",
+        "going", "come", "came", "coming", "said", "tell", "told",
+        "like", "just", "also", "very", "then", "than", "now", "some",
+        "from", "about", "into", "over", "after", "before",
+        "called", "named", "known", "asked", "told", "told",
+        "recommended", "suggested", "mentioned", "said",
+        "went", "goes", "go", "coming", "comes",
+        "think", "thought", "know", "knew", "want", "wanted",
+        "need", "needed", "use", "used", "using",
+    }
+
+    _ENTITY_PATTERNS: list[tuple[str, str]] = [
+        # Dates and temporal markers
+        (r'\b(?:yesterday|today|tomorrow|tonight|last\s+\w+|next\s+\w+)\b', 'DATE'),
+        (r'\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b', 'DATE'),
+        (r'\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\b', 'DATE'),
+        (r'\b\d{4}-\d{2}-\d{2}\b', 'DATE'),  # ISO dates
+        # Names: two consecutive capitalized words (common in conversations)
+        (r'\b[A-Z][a-z]+\s+[A-Z][a-z]+\b', 'PERSON'),
+        # Technical terms / brands (common in LoCoMo conversations)
+        (r'\b(?:iPhone|Android|Windows|MacOS|Linux|Python|JavaScript|React|Node|Docker|AWS|Google|Apple|Microsoft|Amazon|Netflix|Spotify|Tesla)\b', 'PRODUCT'),
+        # Location patterns
+        (r'\b(?:New York|Los Angeles|San Francisco|London|Paris|Berlin|Tokyo|Sydney|Chicago|Boston|Seattle|Austin)\b', 'LOCATION'),
+    ]
+
     def __init__(
         self,
         qdrant_host: str = "localhost",
@@ -118,6 +148,9 @@ class HybridRetriever:
         self._skillgraph = skillgraph  # Optional for graph_boost
         self._ids = []
         self._texts = []
+        self._chunk_graph: dict[str, set[str]] = {}  # chunk_id → set of session-neighbor ids
+        self._chunk_text_lookup: dict[str, str] = {}  # chunk_id → text (for graph expansion)
+        self._entity_index: dict[str, set[str]] = {}  # entity_key → set of chunk_ids
         self._bm25 = None
 
         # Try to load cached BM25 index
@@ -240,6 +273,34 @@ class HybridRetriever:
                     text = f"{payload.get('user_content', '')} → {payload.get('assistant_content', '')}"
                 self._ids.append(str(pid))
                 self._texts.append(text.lower())
+
+        # Build chunk graph: connect chunks from same session
+        self._chunk_graph = {}
+        self._chunk_text_lookup = {str(pid): txt for pid, txt in zip(self._ids, self._texts)}
+        session_groups: dict[str, list[str]] = {}
+        for p in points:
+            payload = p.get("payload", {})
+            sid = str(payload.get("session_id", payload.get("type", "unknown")))
+            pid_str = str(p.get("id", ""))
+            if pid_str not in session_groups:
+                session_groups[sid] = []
+            session_groups[sid].append(pid_str)
+        for sid, pids in session_groups.items():
+            if len(pids) < 2:
+                continue
+            pset = set(pids)
+            for pid in pids:
+                self._chunk_graph[pid] = pset - {pid}
+
+        # Build entity index: entity → set of chunk_ids
+        self._entity_index = {}
+        for i, cid in enumerate(self._ids):
+            if i < len(self._texts):
+                entities = self._extract_entities(self._texts[i])
+                for e in entities:
+                    if e not in self._entity_index:
+                        self._entity_index[e] = set()
+                    self._entity_index[e].add(cid)
 
         # Build BM25 index
         if self._texts:
@@ -452,21 +513,23 @@ class HybridRetriever:
         voyage_api_key: str | None = None,
         stepback_query: str | None = None,
         stepback_weight: float = 0.9,
+        graph_expand: bool = False,
+        entity_boost: bool = False,
     ) -> list[dict]:
-        """Full hybrid search: BM25 + (optional) vector + RRF + tier + graph + rerank + stepback.
+        """Full hybrid search: BM25 + (optional) vector + RRF + tier + graph + rerank + stepback + expansion.
 
         Args:
             query: Search query string.
             query_vector: Optional pre-computed embedding for vector search.
             top_k: Number of results to return.
-            graph_boost: If True, boost results by graph connectivity.
+            graph_boost: If True, boost results by graph connectivity (SkillGraph).
             rerank: If True, enable cross-encoder reranking.
             reranker: Which reranker to use — "voyage" (default, API) or "cross-encoder" (local).
             voyage_api_key: Required if reranker="voyage".
             stepback_query: Optional broader query for step-back retrieval.
-                            When provided, runs a secondary search and fuses
-                            results with primary, weighted by stepback_weight.
             stepback_weight: Score multiplier for step-back results (default 0.9).
+            graph_expand: If True, expand results with graph neighbors from
+                          the same session (uses chunk graph built in index_memories()).
 
         Returns:
             List of dicts with id, rrf_score, tier, methods, text, (rerank_score).
@@ -523,6 +586,15 @@ class HybridRetriever:
                     sb["methods"] = list(set(sb.get("methods", []) + ["stepback"]))
                     fused.append(sb)
 
+            fused.sort(key=lambda x: x.get("rrf_score", 0), reverse=True)
+
+        # Graph Expansion: add session-neighbors to results
+        if graph_expand and fused:
+            fused = self._graph_expand(fused, top_k)
+
+        # Entity Boost: promote results matching query entities
+        if entity_boost and fused:
+            fused = self._entity_boost(fused, query)
             fused.sort(key=lambda x: x.get("rrf_score", 0), reverse=True)
 
         return fused[:top_k]
@@ -590,6 +662,96 @@ class HybridRetriever:
             return reranked
         except Exception:
             return results
+
+    # ── Graph Expansion ────────────────────────────────────────────────────────
+
+    def _graph_expand(self, ranked: list[dict], top_k: int) -> list[dict]:
+        """Expand results with graph neighbors from the same session.
+
+        For each result in ``ranked``, finds all other chunks from the same
+        session (via ``self._chunk_graph``) and adds them to the pool with a
+        0.8x score multiplier. Deduplicates by ID.
+
+        This improves Multi-hop and Temporal recall by surfacing adjacent
+        conversation turns that the primary search might have missed.
+
+        Returns:
+            Expanded list, sorted by score, truncated to ``top_k``.
+        """
+        if not self._chunk_graph:
+            return ranked[:top_k]
+
+        seen_ids = {r.get("id", "") for r in ranked}
+        expanded = list(ranked)
+
+        for r in ranked:
+            cid = r.get("id", "")
+            neighbors = self._chunk_graph.get(cid, set())
+            for nid in neighbors:
+                if nid not in seen_ids:
+                    seen_ids.add(nid)
+                    neighbor_text = self._chunk_text_lookup.get(nid, "")
+                    expanded.append({
+                        "id": nid,
+                        "rrf_score": r.get("rrf_score", 0) * 0.8,
+                        "text": neighbor_text[:500],
+                        "methods": ["graph"],
+                        "tier": "tier3",
+                        "graph_expanded": True,
+                    })
+
+        expanded.sort(key=lambda x: x.get("rrf_score", 0), reverse=True)
+        return expanded[:top_k]
+
+    # ── Entity Extraction ─────────────────────────────────────────────────────
+
+    def _extract_entities(self, text: str) -> set[str]:
+        """Extract named entities from text using regex patterns.
+
+        Returns set of ``type:value`` strings, e.g. ``{"PERSON:john smith", "DATE:monday"}``.
+        All values are lowercased for matching.
+        """
+        entities: set[str] = set()
+        for pattern, etype in self._ENTITY_PATTERNS:
+            for match in re.finditer(pattern, text, re.IGNORECASE):
+                value = match.group(0).strip().lower()
+                # Filter stopwords from PERSON matches
+                if etype == "PERSON":
+                    words = value.split()
+                    if any(w in self._ENTITY_STOPWORDS for w in words):
+                        continue
+                entities.add(f"{etype}:{value}")
+        return entities
+
+    def _entity_boost(self, ranked: list[dict], query: str) -> list[dict]:
+        """Boost results that contain entities matching the query.
+
+        For each result, checks if any of its stored entities appear in the
+        query's entity set. Matching results get a 1.2x boost.
+
+        No-op if no entity index was built (no texts indexed).
+        """
+        if not self._entity_index:
+            return ranked
+
+        query_entities = self._extract_entities(query)
+        if not query_entities:
+            return ranked
+
+        for item in ranked:
+            cid = item.get("id", "")
+            if not cid:
+                continue
+            # Check if any chunk entity matches any query entity
+            chunk_ents = {k for k, v in self._entity_index.items() if cid in v}
+            matches = chunk_ents & query_entities
+            if matches:
+                boost = 1.0 + min(len(matches), 3) * 0.1  # +0.1 per match, max +0.3
+                item["rrf_score"] *= boost
+                item["entity_boost"] = round(boost, 3)
+                item["entity_matches"] = list(matches)[:5]
+
+        return ranked
 
     # ── Internal ────────────────────────────────────────────────────────────
 

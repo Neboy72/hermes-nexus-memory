@@ -1,5 +1,37 @@
 # Changelog
 
+## v2.5.0 (2026-06-02) — Entity Extraction + Graph Expansion (optional)
+
+### Added
+
+- **Entity Extraction Index** — `index_memories()` now builds an entity index mapping extracted entities to chunk IDs
+  - Regex-based: dates, person names (capitalized pairs), locations, products
+  - Stopword filtering to reduce false positives
+  - Used by `_entity_boost()` to promote results whose entities match query entities
+- **Entity Boost** — optional `entity_boost` parameter in `search_hybrid()`
+  - Boosts results by up to 1.3x when chunk entities match query entities
+  - Default: `False` (off, purely opt-in)
+- **Graph Expansion** — optional `graph_expand` parameter in `search_hybrid()`
+  - Expands results with session-neighbor chunks at 0.8x weight
+  - Default: `False` (off, purely opt-in)
+
+### Changed
+
+- `_graph_boost()` kept as-is (SkillGraph degree boost, requires external graph data)
+- `_graph_expand()` uses in-memory chunk graph built from session metadata
+- `_extract_entities()` uses case-insensitive regex + stopword filter
+
+### Benchmark
+
+| Feature | LoCoMo Recall@10 Δ | Status |
+|---------|-------------------|--------|
+| Entity Boost (regex) | -0.68% | Optional, default off |
+| Graph Expansion | -4.6% | Optional, default off |
+
+Both features are available in the API but disabled by default — they are designed for specific use cases (entity-rich queries, strongly connected conversations) where testing showed they may help.
+
+---
+
 ## v2.4.1 (2026-06-02) — Step-Back Adaptive Retrieval + Type Fix
 
 ### Added
