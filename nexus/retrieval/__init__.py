@@ -450,8 +450,10 @@ class HybridRetriever:
         rerank: bool = False,
         reranker: str = "voyage",
         voyage_api_key: str | None = None,
+        stepback_query: str | None = None,
+        stepback_weight: float = 0.9,
     ) -> list[dict]:
-        """Full hybrid search: BM25 + (optional) vector + RRF + tier + graph + rerank.
+        """Full hybrid search: BM25 + (optional) vector + RRF + tier + graph + rerank + stepback.
 
         Args:
             query: Search query string.
@@ -461,6 +463,10 @@ class HybridRetriever:
             rerank: If True, enable cross-encoder reranking.
             reranker: Which reranker to use — "voyage" (default, API) or "cross-encoder" (local).
             voyage_api_key: Required if reranker="voyage".
+            stepback_query: Optional broader query for step-back retrieval.
+                            When provided, runs a secondary search and fuses
+                            results with primary, weighted by stepback_weight.
+            stepback_weight: Score multiplier for step-back results (default 0.9).
 
         Returns:
             List of dicts with id, rrf_score, tier, methods, text, (rerank_score).
@@ -490,6 +496,34 @@ class HybridRetriever:
                 fused = self._rerank_cross_encoder(fused, query, top_k)
             elif reranker == "voyage" and voyage_api_key:
                 fused = self._rerank_voyage(fused, query, voyage_api_key)
+
+        # Step-Back: sekundäre Suche mit breiterer Query → fusionieren
+        if stepback_query and fused:
+            sb_pool_k = top_k * 3
+            sb_bm25 = self.search_bm25(stepback_query, top_k=sb_pool_k)
+            sb_vector = []
+            if query_vector:
+                sb_vector = self.search_vector(query_vector, top_k=sb_pool_k)
+            sb_fused = self._rrf(sb_bm25, sb_vector)
+            sb_fused = self._tier_boost(sb_fused)
+
+            if rerank and sb_fused:
+                if reranker == "cross-encoder":
+                    sb_fused = self._rerank_cross_encoder(sb_fused, stepback_query, top_k)
+                elif reranker == "voyage" and voyage_api_key:
+                    sb_fused = self._rerank_voyage(sb_fused, stepback_query, voyage_api_key)
+
+            # Fusion: primary behält Score, stepback wird gewichtet
+            seen_ids = {r.get("id", "") for r in fused}
+            for sb in sb_fused:
+                sid = sb.get("id", "")
+                if sid not in seen_ids:
+                    seen_ids.add(sid)
+                    sb["rrf_score"] = sb.get("rrf_score", 0) * stepback_weight
+                    sb["methods"] = list(set(sb.get("methods", []) + ["stepback"]))
+                    fused.append(sb)
+
+            fused.sort(key=lambda x: x.get("rrf_score", 0), reverse=True)
 
         return fused[:top_k]
 

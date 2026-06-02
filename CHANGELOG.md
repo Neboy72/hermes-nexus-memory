@@ -1,5 +1,27 @@
 # Changelog
 
+## v2.4.1 (2026-06-02) — Step-Back Adaptive Retrieval + Type Fix
+
+### Added
+
+- **Step-Back Adaptive Retrieval** — optional `stepback_query` + `stepback_weight` in `search_hybrid()`
+  - Runs a secondary search with a broader query when provided
+  - Fuses results: primary chunks keep their scores, stepback chunks get weighted (default 0.9x)
+  - +0.24% Recall@10 on LoCoMo (200 QA), +0.87% on Adversarial category
+  - No change to default behavior — purely opt-in via `stepback_query` parameter
+
+### Fixed
+
+- **Type annotation compatibility** — added `from __future__ import annotations` in `locomo_eval.py`
+  - Fixes `TypeError: unsupported operand type(s) for |` on Python 3.11
+  - Affected `rerank_cross_encoder()` return type `list[dict] | None`
+
+### Changed
+
+- `locomo_eval.py`: restored proper return type hint on `rerank_cross_encoder()`
+
+---
+
 ## v2.4.0 (2026-06-02) — Local Cross-Encoder Reranker + Conversation-Aware Chunking
 
 ### Added
