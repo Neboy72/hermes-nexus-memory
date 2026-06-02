@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-nexus-memory"
-version = "2.1.0"
+version = "2.4.0"
 description = "Persistent vector memory for Hermes Agent — SkillGraph, hybrid retrieval, drift detection, anti-poisoning, skill export"
 readme = "README.md"
 license = "MIT"
