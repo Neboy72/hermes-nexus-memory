@@ -1,25 +1,25 @@
-"""Grounding Scoring for RAG — 4-Signal-Methode.
+"""Grounding Scoring for RAG — 4-Signal Method.
 
-Bewertet wie vertrauenswürdig eine generierte Antwort basierend auf
-den retrieved Chunks ist. Ändert nichts an der bestehenden Pipeline.
+Evaluates how trustworthy a generated answer is based on the retrieved
+chunks. Does not modify the existing pipeline.
 
-**Warum Grounding?**
-Stanford CS229 (Yann Dubois) zeigt: SFT (Supervised Fine-Tuning) trainiert
-Modelle dazu plausibel klingende Antworten zu geben, selbst wenn sie die
-Fakten nicht im Pre-Training gelernt haben. Die Folge: Halluzination.
-Grounding ist die Gegenmassnahme — es prüft ob die Antwort tatsächlich
-durch die abgerufenen Fakten gedeckt ist, nicht nur ob sie gut klingt.
+**Why Grounding?**
+Stanford CS229 (Yann Dubois) shows: SFT (Supervised Fine-Tuning) trains
+models to give plausible-sounding answers even if they never learned the
+facts during pre-training. The result: hallucination.
+Grounding is the countermeasure — it checks whether the answer is actually
+supported by the retrieved facts, not just whether it sounds good.
 
-Signale:
+Signals:
 1. **similarity** — Query-Embedding ↔ Chunk-Embeddings (max cosine)
-2. **dominance**  — Wie stark stützt sich alles auf einen Top-Chunk?
-3. **grounding**  — Antwort-Embedding ↔ Chunk-Embeddings (max cosine)
-4. **coverage**   — Chunk-Vielfalt / Query-Breite abgedeckt?
+2. **dominance**  — How much does everything rely on a single top chunk?
+3. **grounding**  — Answer-Embedding ↔ Chunk-Embeddings (max cosine)
+4. **coverage**   — Chunk diversity / query breadth covered?
 
 Usage:
     from nexus.confidence import ConfidenceScorer
     scorer = ConfidenceScorer()
-    report = scorer.evaluate(query="Was ist Nexus?", answer="Nexus ist...")
+    report = scorer.evaluate(query="What is Nexus?", answer="Nexus is...")
     print(report.json())
 """
 
@@ -66,7 +66,7 @@ except ImportError:
 
 @dataclass
 class SignalScores:
-    """Die fünf Einzelsignale, jeweils 0.0 – 1.0."""
+    """The five individual signals, each 0.0 – 1.0."""
     similarity: float = 0.0
     dominance: float = 0.0
     grounding: float = 0.0
@@ -76,7 +76,7 @@ class SignalScores:
 
 @dataclass
 class GroundingReport:
-    """Vollständiger Grounding-Report für einen evaluate()-Durchlauf."""
+    """Complete Grounding Report for one evaluate() run."""
     query: str = ""
     answer: str = ""
     signals: SignalScores = field(default_factory=SignalScores)
@@ -95,10 +95,10 @@ class GroundingReport:
 
 
 def _cosine_sim(a: list[float], b: list[float]) -> float:
-    """Cosine similarity zwischen zwei Vektoren."""
+    """Cosine similarity between two vectors."""
     if HAS_SKLEARN:
         return float(cosine_similarity([a], [b])[0][0])
-    # NumPy-freier Fallback
+    # NumPy-free fallback
     dot = sum(ai * bi for ai, bi in zip(a, b))
     norm_a = math.sqrt(sum(ai * ai for ai in a))
     norm_b = math.sqrt(sum(bi * bi for bi in b))
@@ -111,18 +111,18 @@ def _cosine_sim(a: list[float], b: list[float]) -> float:
 
 
 def _embed(texts: list[str], provider: str = "voyage") -> Optional[list[list[float]]]:
-    """Embed eine Liste von Texten via Voyage, sentence-transformers oder Ollama.
+    """Embed a list of texts via Voyage, sentence-transformers, or Ollama.
 
     Args:
-        texts: Liste der zu embeddenden Texte.
-        provider: "voyage" (512d), "sentence-transformers" (384d) oder "ollama" (768d).
+        texts: List of texts to embed.
+        provider: "voyage" (512d), "sentence-transformers" (384d) or "ollama" (768d).
 
     Returns:
-        Liste von Embedding-Vektoren oder None bei Fehler.
+        List of embedding vectors or None on error.
     """
     if provider == "voyage":
         if not HAS_VOYAGE:
-            _logger.warning("voyageai nicht installiert")
+            _logger.warning("voyageai not installed")
             return None
         try:
             client = voyageai.Client()
@@ -157,7 +157,7 @@ def _embed(texts: list[str], provider: str = "voyage") -> Optional[list[list[flo
             return None
 
     else:
-        _logger.warning(f"Unbekannter Embedding-Provider: {provider}")
+        _logger.warning(f"Unknown embedding provider: {provider}")
         return None
 
 
@@ -171,7 +171,7 @@ def _fetch_chunks(
     collection: Optional[str] = None,
     top_k: int = 5,
 ) -> list[dict]:
-    """Hole die Top-K Chunks aus Qdrant (mit voller Payload)."""
+    """Fetch top-K chunks from Qdrant (with full payload)."""
     collection = get_collection(collection)
     if not HAS_REQUESTS:
         return []
@@ -207,13 +207,13 @@ def _fetch_chunks(
 
 
 class GroundingScorer:
-    """Bewertet die Vertrauenswürdigkeit einer RAG-Antwort.
+    """Evaluates the trustworthiness of a RAG answer.
 
-    Nutzt vier Signale:
-    1. similarity  — Query↔Chunk: Passt der beste Chunk zur Frage?
-    2. dominance   — Chunk-Verteilung: Ein dominanter Chunk oder viele?
-    3. grounding   — Antwort↔Chunk: Nutzt die Antwort wirklich die Chunks?
-    4. coverage    — Chunk↔Query: Decken die Chunks die Frage-Breite ab?
+    Uses four signals:
+    1. similarity  — Query↔Chunk: Does the best chunk match the question?
+    2. dominance   — Chunk distribution: One dominant chunk or many?
+    3. grounding   — Answer↔Chunk: Does the answer actually use the chunks?
+    4. coverage    — Chunk↔Query: Do the chunks cover the question breadth?
     """
 
     def __init__(
@@ -231,7 +231,7 @@ class GroundingScorer:
         self.collection = collection
         self.top_k = top_k
 
-    # ─ Öffentliche API ────────────────────────────────────────────
+    # ─ Public API ──────────────────────────────────────────────────
 
     def evaluate(
         self,
@@ -239,27 +239,27 @@ class GroundingScorer:
         answer: str,
         chunks: Optional[list[dict]] = None,
     ) -> ConfidenceReport:
-        """Vollständige Grounding-Bewertung.
+        """Full grounding evaluation.
 
         Args:
-            query: Die ursprüngliche User-Frage.
-            answer: Die generierte Antwort.
-            chunks: Optional — bereits geretrievede Chunks.
-                    Bei None werden sie aus Qdrant geholt.
+            query: The original user question.
+            answer: The generated answer.
+            chunks: Optional — pre-retrieved chunks.
+                    If None, fetched from Qdrant.
 
         Returns:
-            GroundingReport mit allen Signalen.
+            GroundingReport with all signals.
         """
         report = GroundingReport(query=query, answer=answer)
 
-        # Schritt 1: Query embedden
+        # Step 1: Embed query
         q_emb = _embed([query], provider=self.embed_provider)
         if q_emb is None:
-            report.error = "Embedding fehlgeschlagen"
+            report.error = "Embedding failed"
             return report
         q_emb = q_emb[0]
 
-        # Schritt 2: Chunks holen (falls nicht mitgeliefert)
+        # Step 2: Fetch chunks (if not provided)
         if chunks is None:
             chunks = _fetch_chunks(
                 q_emb,
@@ -270,26 +270,26 @@ class GroundingScorer:
             )
 
         if not chunks:
-            report.error = "Keine Chunks gefunden"
+            report.error = "No chunks found"
             return report
 
         report.num_chunks = len(chunks)
         report.top_chunk_score = chunks[0].get("score", 0.0) if chunks else 0.0
 
-        # Schritt 3: Chunk-Texte embedden
+        # Step 3: Embed chunk texts
         chunk_texts = [c.get("text", "") for c in chunks if c.get("text")]
         if not chunk_texts:
-            report.error = "Chunks haben keinen Text"
+            report.error = "Chunks have no text"
             return report
 
         chunk_embs = _embed(chunk_texts, provider=self.embed_provider)
         if chunk_embs is None:
-            report.error = "Chunk-Embedding fehlgeschlagen"
+            report.error = "Chunk embedding failed"
             return report
 
         chunk_scores = [c.get("score", 0.0) for c in chunks]
 
-        # Schritt 4: Fünf Signale berechnen
+        # Step 4: Compute five signals
         signals = SignalScores()
         signals.similarity = self._signal_similarity(q_emb, chunk_embs, chunk_scores)
         signals.dominance = self._signal_dominance(chunk_scores)
@@ -299,12 +299,12 @@ class GroundingScorer:
         a_emb = _embed([answer], provider=self.embed_provider)
         if a_emb:
             signals.grounding = self._signal_grounding(a_emb[0], chunk_embs)
-            # Fakten-Check: Wörtliche Überlappung (schützt vor Halluzinationen)
+            # Factual check: lexical overlap (protects against hallucinations)
             signals.factual = self._signal_factual(answer, chunk_texts)
 
         report.signals = signals
 
-        # Schritt 5: Gesamt-Grounding + Label
+        # Step 5: Aggregate grounding + label
         report.grounding = self._aggregate(signals)
         report.chunk_count = len(chunks)
         report.label = self._label(report.grounding)
@@ -313,19 +313,19 @@ class GroundingScorer:
 
     @staticmethod
     def _label(grounding: float) -> str:
-        """Menschlesbares Label fuer den Grounding-Wert."""
+        """Human-readable label for the grounding score."""
         if grounding >= 0.8:
-            return "🟢 Sehr hoch"
+            return "🟢 Very high"
         elif grounding >= 0.6:
-            return "🟡 Hoch"
+            return "🟡 High"
         elif grounding >= 0.4:
-            return "🟠 Mittel"
+            return "🟠 Medium"
         elif grounding >= 0.2:
-            return "🔴 Niedrig"
+            return "🔴 Low"
         else:
-            return "⛔ Sehr niedrig"
+            return "⛔ Very low"
 
-    # ─ Einzelsignale ──────────────────────────────────────────────
+    # ─ Individual signals ──────────────────────────────────────────
 
     @staticmethod
     def _signal_similarity(
@@ -333,11 +333,11 @@ class GroundingScorer:
         chunk_embs: list[list[float]],
         chunk_scores: list[float],
     ) -> float:
-        """Signal 1: Ähnlichkeit zwischen Query und Chunks.
+        """Signal 1: Similarity between query and chunks.
 
-        Nimmt den höchsten Cosine-Score zwischen Query und Chunks,
-        gewichtet mit der Score-Dominanz. Wenn der Top-Chunk einen
-        hohen cosine-Wert hat → hohe Similarity.
+        Takes the highest cosine score between query and chunks,
+        weighted by score dominance. If the top chunk has a
+        high cosine value → high similarity.
         """
         if not chunk_embs:
             return 0.0
@@ -349,16 +349,16 @@ class GroundingScorer:
 
     @staticmethod
     def _signal_dominance(chunk_scores: list[float]) -> float:
-        """Signal 2: Chunk-Dominanz.
+        """Signal 2: Chunk dominance.
 
-        Misst wie stark sich die semantische Masse auf den
-        Top-Chunk konzentriert. Formel:
+        Measures how much the semantic mass concentrates on the
+        top chunk. Formula:
             dominance = (top_score / sum(all_scores)) ^ 0.5
 
-        Hohe Dominanz (0.7–1.0) = Antwort stützt sich stark auf
-        EINEN Chunk → gut für Faktfragen.
-        Niedrige Dominanz (0.0–0.4) = gleichmässige Verteilung
-        → gut für synthetisierende Antworten.
+        High dominance (0.7–1.0) = answer relies heavily on
+        ONE chunk → good for factual questions.
+        Low dominance (0.0–0.4) = even distribution
+        → good for synthesizing answers.
         """
         if not chunk_scores or sum(chunk_scores) == 0:
             return 0.0
@@ -388,14 +388,14 @@ class GroundingScorer:
         answer: str,
         chunk_texts: list[str],
     ) -> float:
-        """Signal 5: Named Entity Matching — schützt vor Halluzinationen.
+        """Signal 5: Named Entity Matching — protects against hallucinations.
 
-        Extrahiert technische Named Entities aus der Antwort und prüft
-        ob sie in den Chunk-Texten vorkommen. Erkennt Fachbegriffe wie
-        Voyage, Qdrant, BM25, GPT, RAG — nicht nur einfache Wörter.
+        Extracts technical named entities from the answer and checks
+        whether they appear in the chunk texts. Recognizes terms like
+        Voyage, Qdrant, BM25, GPT, RAG — not just simple words.
 
-        Niedriger Wert = Antwort verwendet Fachbegriffe die in keinem
-        Chunk-Quelltext stehen.
+        Low value = answer uses technical terms not present in any
+        chunk source text.
         """
         if not chunk_texts or not answer:
             return 0.0
@@ -425,13 +425,13 @@ class GroundingScorer:
         answer_emb: list[float],
         chunk_embs: list[list[float]],
     ) -> float:
-        """Signal 3: Grounding — Wie stark basiert die Antwort auf Chunks?
+        """Signal 3: Grounding — How much does the answer rely on chunks?
 
-        Embeddet die generierte Antwort und vergleicht sie mit den
-        Chunk-Embeddings. Der maximale Cosine-Score zeigt: die Antwort
-        überschneidet sich semantisch mit mindestens einem Chunk.
+        Embeds the generated answer and compares it with the
+        chunk embeddings. The maximum cosine score shows: the answer
+        semantically overlaps with at least one chunk.
 
-        Niedriges Grounding = Antwort nutzt vor allem LLM-Param-Wissen.
+        Low grounding = answer mostly relies on LLM parametric knowledge.
         """
         if not chunk_embs:
             return 0.0
@@ -443,35 +443,35 @@ class GroundingScorer:
         query_emb: list[float],
         chunk_embs: list[list[float]],
     ) -> float:
-        """Signal 4: Coverage — Wie gut decken die Chunks die Frage ab?
+        """Signal 4: Coverage — How well do the chunks cover the question?
 
-        Misst die semantische Distanz zwischen Query und ALLEN Chunks.
-        Niedrige std_dev + hohe mean_similarity = Chunks decken
-        die Query-Breite gut ab.
+        Measures the semantic distance between query and ALL chunks.
+        Low std_dev + high mean_similarity = chunks cover
+        the query breadth well.
 
-        Idee: Je mehr Chunks hohe Ähnlichkeit zur Query haben,
-        desto mehr Aspekte der Frage werden abgedeckt.
+        Idea: The more chunks have high similarity to the query,
+        the more aspects of the question are covered.
         """
         if not chunk_embs or len(chunk_embs) < 1:
             return 0.0
         similarities = [_cosine_sim(query_emb, ce) for ce in chunk_embs]
         mean_sim = sum(similarities) / len(similarities)
-        # Bonus: mehr Chunks = mehr Coverage (logarithmisch, damit nicht übergewichtet)
+        # Bonus: more chunks = more coverage (logarithmic, avoids overweighting)
         count_bonus = min(math.log2(len(chunk_embs) + 1) / 3.0, 1.0)
         return min((mean_sim * 0.7 + count_bonus * 0.3), 1.0)
 
-    # ─ Aggregation ────────────────────────────────────────────────
+    # ─ Aggregation ──────────────────────────────────────────────────
 
     @staticmethod
     def _aggregate(signals: SignalScores) -> float:
-        """Berechne Gesamt-Grounding aus den 5 Einzelsignalen.
+        """Compute overall grounding from the 5 individual signals.
 
-        Gewichtung:
+        Weights:
         - similarity:  25% (Query-Chunk Fit)
-        - dominance:   15% (Stabilitat der Chunk-Basis)
-        - grounding:   25% (Antwort-Chunk semantisch)
-        - factual:     20% (Wort-Overlap, schuetzt vor Halluzinationen)
-        - coverage:    15% (Breite der Abdeckung)
+        - dominance:   15% (Stability of chunk basis)
+        - grounding:   25% (Answer-chunk semantic match)
+        - factual:     20% (Word overlap, protects against hallucinations)
+        - coverage:    15% (Breadth of coverage)
         """
         weights = {
             "similarity": 0.25,

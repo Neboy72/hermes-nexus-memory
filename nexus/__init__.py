@@ -709,8 +709,8 @@ def resolve_authority(
     # Sort: lowest level number = highest authority
     # If same level and prefer_recent: newer timestamp wins
     if prefer_recent:
-        # Stabil sort: erst nach Timestamp absteigend (neuste zuerst)
-        # dann nach Level aufsteigend (stabil → gleiches Level behält Timestamp-Ordnung)
+        # Stable sort: first by timestamp descending (newest first)
+        # then ascending by level (stable → same level keeps timestamp order)
         scored.sort(key=lambda x: x[1] if x[1] else "", reverse=True)
         scored.sort(key=lambda x: x[0])
     else:

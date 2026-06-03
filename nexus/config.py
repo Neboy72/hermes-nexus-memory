@@ -1,24 +1,25 @@
-"""Nexus Memory — zentrale Konfiguration.
+"""Nexus Memory — central configuration.
 
-Sammelt Konstanten, die sonst als Magic Strings in vielen Modulen verteilt wären.
+Collects constants that would otherwise be scattered as magic strings
+across multiple modules.
 """
 
 import os
 from typing import Optional
 
 DEFAULT_COLLECTION: Optional[str] = None
-"""Fallback-Collection-Name wenn kein expliziter Wert übergeben wird.
-None = zwingt Aufrufer zur Angabe (ValueError wenn weder Parameter noch ENV).
+"""Fallback collection name when no explicit value is passed.
+None forces the caller to provide one (ValueError if neither param nor ENV).
 """
 
 
 def get_collection(override: Optional[str] = None) -> str:
-    """Ermittelt den effektiven Collection-Namen.
+    """Resolve the effective collection name.
 
-    Priorität:
-    1. override-Parameter (explizit vom Aufrufer)
-    2. $NEXUS_COLLECTION Umgebungsvariable
-    3. DEFAULT_COLLECTION (Config-Wert, aktuell None)
+    Priority:
+    1. override parameter (explicit caller value)
+    2. $NEXUS_COLLECTION environment variable
+    3. DEFAULT_COLLECTION (config value, currently None)
     4. → ValueError
     """
     if override:
@@ -32,6 +33,6 @@ def get_collection(override: Optional[str] = None) -> str:
         return DEFAULT_COLLECTION
 
     raise ValueError(
-        "Kein Collection-Name angegeben. "
-        "Übergib collection_name=<name> oder setze $NEXUS_COLLECTION."
+        "No collection name specified. "
+        "Pass collection_name=<name> or set $NEXUS_COLLECTION."
     )

@@ -4,21 +4,21 @@
 
 ### Changed
 
-- **Collection-Default-Cleanup** — 17 hardcodierte `hermes-memory-1024d`-Referenzen in der Peripherie durch zentralen `get_collection()`-Resolver ersetzt:
+- **Collection-Default-Cleanup** — 17 hardcoded `hermes-memory-1024d` references across the periphery replaced with a centralized `get_collection()` resolver:
   - `nexus/__init__.py` (5×), `nexus/confidence.py` (2×), `nexus/export.py` (2×)
   - `nexus/discovery/matcher.py` (3×), `nexus/graph/store.py` (1×)
   - `nexus/health/__init__.py` (1×), `nexus/provenance/__init__.py` (1×)
   - `nexus/retrieval/__init__.py` (1×), `nexus/staging.py` (1×)
-- **`nexus/config.py`** — neuer zentraler `get_collection()`-Resolver mit Fallback-Chain:
-  1. `collection_name=`-Parameter
-  2. `$NEXUS_COLLECTION`-Env-Variable
+- **`nexus/config.py`** — new centralized `get_collection()` resolver with fallback chain:
+  1. `collection_name=` parameter
+  2. `$NEXUS_COLLECTION` env variable
   3. `DEFAULT_COLLECTION` (None)
-  4. → `ValueError` mit klarer Fehlermeldung
-- **Tests**: `conftest.py` setzt `NEXUS_COLLECTION=test-collection` — 224/224 pass
+  4. → `ValueError` with clear error message
+- **Tests**: `conftest.py` sets `NEXUS_COLLECTION=test-collection` — 224/224 pass
 
 ### Fixed
 
-- **ValueError-Guard** statt stillem Fail wenn kein Collection-Name gesetzt ist
+- **ValueError guard** instead of silent failure when no collection name is set
 
 ## [2.6.0] — 2026-06-03
 
@@ -79,7 +79,7 @@
 
 - v2.1.0 baut auf v2.0.0 SkillGraph auf — SQLite-EdgeStore bleibt Source of Truth
 - Discovery-Trigger: manuell (kein Cron) — `discover_all()` bei Bedarf
-- Proposed Edges sind standardmässig unsichtbar in `list_edges()` — nur bei `status='proposed'` sichtbar
+- Proposed edges are invisible by default in `list_edges()` — only visible with `status='proposed'`
 
 ## [2.0.0] — 2026-05-26
 

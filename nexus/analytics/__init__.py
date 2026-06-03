@@ -1,10 +1,10 @@
-"""Graph Analytics — Analyse und Report über den SkillGraph.
+"""Graph Analytics — analysis and reports over the SkillGraph.
 
-v2.1.0: Bietet Einblick in die Graph-Struktur:
-  - Hub-Scores (meistvernetzte Facts)
-  - Isolation-Scores (isolierte Facts = Wissenslücken)
+v2.1.0: Provides insight into the graph structure:
+  - Hub Scores (most-connected facts)
+  - Isolation Scores (isolated facts = knowledge gaps)
   - Clustering (Connected Components)
-  - Knowledge-Gaps Report
+  - Knowledge Gaps Report
 
 Usage:
     from nexus.analytics import GraphAnalytics

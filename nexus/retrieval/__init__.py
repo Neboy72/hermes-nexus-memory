@@ -563,7 +563,7 @@ class HybridRetriever:
             elif reranker == "voyage" and voyage_api_key:
                 fused = self._rerank_voyage(fused, query, voyage_api_key)
 
-        # Step-Back: sekundäre Suche mit breiterer Query → fusionieren
+        # Step-Back: secondary search with broader query → fuse
         if stepback_query and fused:
             sb_pool_k = top_k * 3
             sb_bm25 = self.search_bm25(stepback_query, top_k=sb_pool_k)
@@ -579,7 +579,7 @@ class HybridRetriever:
                 elif reranker == "voyage" and voyage_api_key:
                     sb_fused = self._rerank_voyage(sb_fused, stepback_query, voyage_api_key)
 
-            # Fusion: primary behält Score, stepback wird gewichtet
+            # Fusion: primary keeps score, stepback gets weighted
             seen_ids = {r.get("id", "") for r in fused}
             for sb in sb_fused:
                 sid = sb.get("id", "")
