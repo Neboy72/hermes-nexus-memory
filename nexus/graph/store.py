@@ -33,8 +33,10 @@ from nexus.graph.schema import (
 
 _logger = logging.getLogger(__name__)
 
+from nexus.config import get_collection
+
 DEFAULT_QDRANT_URL = "http://localhost:6333"
-DEFAULT_COLLECTION = "hermes-memory"
+DEFAULT_COLLECTION: str = get_collection()
 MAX_PAGE_SIZE = 1000
 
 

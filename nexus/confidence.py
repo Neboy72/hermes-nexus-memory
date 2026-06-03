@@ -32,6 +32,8 @@ import os
 from dataclasses import dataclass, field, asdict
 from typing import Optional
 
+from nexus.config import get_collection
+
 _logger = logging.getLogger(__name__)
 
 # ── Optional dependencies ──────────────────────────────────────────
@@ -166,10 +168,11 @@ def _fetch_chunks(
     query_embedding: list[float],
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection: str = "hermes-memory-1024d",
+    collection: Optional[str] = None,
     top_k: int = 5,
 ) -> list[dict]:
     """Hole die Top-K Chunks aus Qdrant (mit voller Payload)."""
+    collection = get_collection(collection)
     if not HAS_REQUESTS:
         return []
     try:
@@ -218,9 +221,10 @@ class GroundingScorer:
         embed_provider: str = "voyage",
         qdrant_host: str = "localhost",
         qdrant_port: int = 6333,
-        collection: str = "hermes-memory-1024d",
+        collection: Optional[str] = None,
         top_k: int = 5,
     ):
+        collection = get_collection(collection)
         self.embed_provider = embed_provider
         self.qdrant_host = qdrant_host
         self.qdrant_port = qdrant_port

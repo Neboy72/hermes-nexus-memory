@@ -26,7 +26,9 @@ import json
 import re
 import logging
 from datetime import datetime, date
-from typing import Any
+from typing import Any, Optional
+
+from nexus.config import get_collection
 
 _logger = logging.getLogger(__name__)
 
@@ -70,7 +72,7 @@ SOURCE_TYPES = {
 
 
 def scan_provenance(qdrant_host: str = "localhost", qdrant_port: int = 6333,
-                     collection_name: str = "hermes-memory-1024d", limit: int = 500) -> dict:
+                     collection_name: Optional[str] = None, limit: int = 500) -> dict:
     """Scan all memory entries in Qdrant and analyze provenance metadata.
 
     Extracts source types, creators, confidence scores, and criticality
@@ -87,6 +89,7 @@ def scan_provenance(qdrant_host: str = "localhost", qdrant_port: int = 6333,
         Dict with ``source_stats``, ``creator_stats``, ``confidence_avg``,
         ``criticality_count``, ``total_scanned``.
     """
+    collection_name = get_collection(collection_name)
     if not HAS_REQUESTS:
         return {"error": "requests library required"}
 
@@ -284,7 +287,7 @@ def find_corroboration(
     content: str,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory-1024d",
+    collection_name: Optional[str] = None,
     threshold: float = 0.7,
     limit: int = 5,
 ) -> list[dict]:
@@ -308,6 +311,7 @@ def find_corroboration(
     Returns:
         List of candidate entries that may corroborate this content.
     """
+    collection_name = get_collection(collection_name)
     if not HAS_REQUESTS:
         _logger.warning("requests not available — cannot query Qdrant")
         return []
@@ -359,7 +363,7 @@ def corroborate_entry(
     corroborator_id: str,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory-1024d",
+    collection_name: Optional[str] = None,
 ) -> dict:
     """Link two entries as corroborating each other (bidirectional).
 
@@ -376,6 +380,7 @@ def corroborate_entry(
     Returns:
         Dict with update result.
     """
+    collection_name = get_collection(collection_name)
     if not HAS_REQUESTS:
         return {"error": "requests library required"}
 
@@ -457,7 +462,7 @@ def add_dependency(
     depends_on_id: str,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory-1024d",
+    collection_name: Optional[str] = None,
 ) -> dict:
     """Link two entries as dependency (bidirectional).
 
@@ -474,6 +479,7 @@ def add_dependency(
     Returns:
         Dict with keys: ``linked`` (bool), ``had_cycle`` (bool), ``error`` (str or None).
     """
+    collection_name = get_collection(collection_name)
     if not HAS_REQUESTS:
         return {"linked": False, "had_cycle": False, "error": "requests library required"}
 
@@ -567,7 +573,7 @@ def build_dependency_graph(
     point_id: str,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory-1024d",
+    collection_name: Optional[str] = None,
     max_depth: int = 3,
 ) -> dict:
     """Build a full dependency graph for a memory entry.
@@ -586,6 +592,7 @@ def build_dependency_graph(
         Dict with ``root``, ``dependencies`` (upstream), ``dependents`` (downstream),
         and ``criticality`` (how many entries break if this fact is wrong).
     """
+    collection_name = get_collection(collection_name)
     if not HAS_REQUESTS:
         return {"error": "requests library required"}
 

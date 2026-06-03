@@ -29,6 +29,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
+from nexus.config import get_collection
+
 try:
     import requests
     HAS_REQUESTS = True
@@ -215,10 +217,11 @@ class DriftDetector:
         self,
         qdrant_host: str = "localhost",
         qdrant_port: int = 6333,
-        collection_name: str = "hermes-memory-1024d",
+        collection_name: Optional[str] = None,
         stale_patterns: list[tuple[str, str]] | None = None,
         old_threshold_days: int = 90,
     ):
+        collection_name = get_collection(collection_name)
         if not HAS_REQUESTS:
             raise ImportError("requests is required: pip install requests")
 

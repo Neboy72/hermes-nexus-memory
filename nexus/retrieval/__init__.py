@@ -21,7 +21,9 @@ import json, re
 from collections import defaultdict
 from pathlib import Path
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
+
+from nexus.config import get_collection
 
 if TYPE_CHECKING:
     from nexus.graph.graph import SkillGraph
@@ -137,9 +139,10 @@ class HybridRetriever:
         self,
         qdrant_host: str = "localhost",
         qdrant_port: int = 6333,
-        collection_name: str = "hermes-memory-1024d",
+        collection_name: Optional[str] = None,
         skillgraph: "SkillGraph | None" = None,
     ) -> None:
+        collection_name = get_collection(collection_name)
         if not HAS_BM25:
             raise ImportError("bm25s is required: pip install bm25s")
 

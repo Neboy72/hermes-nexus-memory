@@ -16,6 +16,7 @@ import logging
 from typing import Any, Optional
 
 import requests
+from nexus.config import get_collection
 
 from nexus.lifecycle import (
     FactStatus,
@@ -55,7 +56,7 @@ _logger = logging.getLogger(__name__)
 #     updated_at: str
 
 
-COLLECTION_ALL = "hermes-memory-1024d"
+COLLECTION_ALL: str = get_collection()
 COLLECTION_CANONICAL = "hermes-memory-canonical"
 
 # ── Collection Bootstrap (lazy, called on first write) ─────────────────────

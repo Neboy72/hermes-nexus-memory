@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.6.1] — 2026-06-03
+
+### Changed
+
+- **Collection-Default-Cleanup** — 17 hardcodierte `hermes-memory-1024d`-Referenzen in der Peripherie durch zentralen `get_collection()`-Resolver ersetzt:
+  - `nexus/__init__.py` (5×), `nexus/confidence.py` (2×), `nexus/export.py` (2×)
+  - `nexus/discovery/matcher.py` (3×), `nexus/graph/store.py` (1×)
+  - `nexus/health/__init__.py` (1×), `nexus/provenance/__init__.py` (1×)
+  - `nexus/retrieval/__init__.py` (1×), `nexus/staging.py` (1×)
+- **`nexus/config.py`** — neuer zentraler `get_collection()`-Resolver mit Fallback-Chain:
+  1. `collection_name=`-Parameter
+  2. `$NEXUS_COLLECTION`-Env-Variable
+  3. `DEFAULT_COLLECTION` (None)
+  4. → `ValueError` mit klarer Fehlermeldung
+- **Tests**: `conftest.py` setzt `NEXUS_COLLECTION=test-collection` — 224/224 pass
+
+### Fixed
+
+- **ValueError-Guard** statt stillem Fail wenn kein Collection-Name gesetzt ist
+
 ## [2.6.0] — 2026-06-03
 
 ### Changed (Breaking)
