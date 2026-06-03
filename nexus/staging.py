@@ -16,6 +16,7 @@ import logging
 from typing import Any, Optional
 
 import requests
+from nexus.config import get_collection
 
 from nexus.lifecycle import (
     FactStatus,
@@ -55,8 +56,26 @@ _logger = logging.getLogger(__name__)
 #     updated_at: str
 
 
-COLLECTION_ALL = "hermes-memory-1024d"
-COLLECTION_CANONICAL = "hermes-memory-canonical"
+# ── Lazy collection resolution ──────────────────────────────────────────────
+# Module-level constants would crash at import time if no default collection is
+# configured (DEFAULT_COLLECTION = None). Instead we resolve lazily on first use.
+_COLLECTION_ALL_CACHE: Optional[str] = None
+_COLLECTION_CANONICAL_CACHE: Optional[str] = None
+
+
+def _collection_all() -> str:
+    global _COLLECTION_ALL_CACHE
+    if _COLLECTION_ALL_CACHE is None:
+        _COLLECTION_ALL_CACHE = get_collection()
+    return _COLLECTION_ALL_CACHE
+
+
+def _collection_canonical() -> str:
+    global _COLLECTION_CANONICAL_CACHE
+    if _COLLECTION_CANONICAL_CACHE is None:
+        _COLLECTION_CANONICAL_CACHE = _collection_all() + "-canonical"
+    return _COLLECTION_CANONICAL_CACHE
+
 
 # ── Collection Bootstrap (lazy, called on first write) ─────────────────────
 _collections_ensured: bool = False
@@ -78,7 +97,7 @@ def ensure_collections(
     and promote() via ``_auto_ensure_collections()``.
     """
     results: dict[str, bool] = {}
-    for name in (COLLECTION_ALL, COLLECTION_CANONICAL):
+    for name in (_collection_all(), _collection_canonical()):
         # Check if already exists
         url = f"{_qdrant_url(host, port, name)}"
         try:
@@ -150,7 +169,7 @@ def _upsert_point(
 
     Returns the version_id.
     """
-    url = f"{_qdrant_url(host, port, COLLECTION_ALL)}/points?wait=true"
+    url = f"{_qdrant_url(host, port, _collection_all())}/points?wait=true"
     payload = version.to_dict()
     data = {
         "points": [{
@@ -175,7 +194,7 @@ def _write_canonical(
     canonical collection, it gets overwritten with the new canonical
     version.  This is the ONLY mutable operation in the entire system.
     """
-    url = f"{_qdrant_url(host, port, COLLECTION_CANONICAL)}/points?wait=true"
+    url = f"{_qdrant_url(host, port, _collection_canonical())}/points?wait=true"
     payload = version.to_dict()
     # Use a minimal placeholder vector (collection requires one)
     data = {
@@ -195,7 +214,7 @@ def _remove_from_canonical(
     port: int = 6333,
 ) -> None:
     """Remove a fact from the canonical collection (during deprecate/rollback)."""
-    url = f"{_qdrant_url(host, port, COLLECTION_CANONICAL)}/points/delete"
+    url = f"{_qdrant_url(host, port, _collection_canonical())}/points/delete"
     data = {
         "filter": {
             "must": [{"key": "fact_id", "match": {"value": fact_id}}]
@@ -433,7 +452,7 @@ def _get_current_canonical(
     port: int = 6333,
 ) -> Optional[FactVersion]:
     """Get the latest CANONICAL version of a fact from the fast-lookup collection."""
-    url = f"{_qdrant_url(host, port, COLLECTION_CANONICAL)}/points/{fact_id}"
+    url = f"{_qdrant_url(host, port, _collection_canonical())}/points/{fact_id}"
     try:
         r = requests.get(url, timeout=10)
         if r.status_code == 200:
@@ -453,7 +472,7 @@ def _get_version(
     port: int = 6333,
 ) -> Optional[FactVersion]:
     """Get a specific version by ID from the full-history collection."""
-    url = f"{_qdrant_url(host, port, COLLECTION_ALL)}/points/{version_id}"
+    url = f"{_qdrant_url(host, port, _collection_all())}/points/{version_id}"
     try:
         r = requests.get(url, timeout=10)
         if r.status_code == 200:
@@ -496,7 +515,7 @@ def _get_canonical_supersedes_set(
     Any pending whose version_id appears in this set has already been
     promoted and should be excluded from pending-review queries.
     """
-    url = f"{_qdrant_url(host, port, COLLECTION_ALL)}/points/scroll"
+    url = f"{_qdrant_url(host, port, _collection_all())}/points/scroll"
     payload = {
         "limit": 5000,
         "with_payload": True,
@@ -532,7 +551,7 @@ def list_pending(
     Update-drafts (pending versions WITH a supersedes field) ARE
     included — they represent replacement candidates that need review.
     """
-    url = f"{_qdrant_url(host, port, COLLECTION_ALL)}/points/scroll"
+    url = f"{_qdrant_url(host, port, _collection_all())}/points/scroll"
     payload = {
         "limit": limit * 3,  # Fetch extra for dedup
         "with_payload": True,
@@ -573,7 +592,7 @@ def list_deprecated(
     limit: int = 50,
 ) -> list[FactVersion]:
     """List all deprecated facts."""
-    url = f"{_qdrant_url(host, port, COLLECTION_ALL)}/points/scroll"
+    url = f"{_qdrant_url(host, port, _collection_all())}/points/scroll"
     payload = {
         "limit": limit,
         "with_payload": True,
@@ -593,7 +612,7 @@ def get_fact_history(
     limit: int = 20,
 ) -> list[FactVersion]:
     """Get all versions of a fact, ordered by recency (newest first)."""
-    url = f"{_qdrant_url(host, port, COLLECTION_ALL)}/points/scroll"
+    url = f"{_qdrant_url(host, port, _collection_all())}/points/scroll"
     payload = {
         "limit": limit,
         "with_payload": True,

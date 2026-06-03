@@ -260,11 +260,11 @@ select_embed_provider() {
 
     echo ""
     info "Detected embedding providers:"
-    $ST_OK     && ok "  sentence-transformers (offline, gratis, 384d)" || warn "  sentence-transformers (not available)"
-    $OLLAMA_OK && ok "  Ollama nomic-embed-text (lokal, 768d)"       || warn "  Ollama nomic-embed-text (not found)"
-    $VOYAGE_OK && ok "  Voyage (API Key gefunden, 1024d, ⭐ empfohlen)" || warn "  Voyage (kein API Key)"
-    $OPENAI_OK && ok "  OpenAI (API Key gefunden, 1536d)"            || warn "  OpenAI (kein API Key)"
-    $JINA_OK   && ok "  Jina (API Key gefunden, 1024d, günstig)"     || warn "  Jina (kein API Key)"
+    $ST_OK     && ok "  sentence-transformers (offline, free, 384d)"     || warn "  sentence-transformers (not available)"
+    $OLLAMA_OK && ok "  Ollama nomic-embed-text (local, 768d)"          || warn "  Ollama nomic-embed-text (not found)"
+    $VOYAGE_OK && ok "  Voyage (API Key found, 1024d, ⭐ recommended)"  || warn "  Voyage (no API Key)"
+    $OPENAI_OK && ok "  OpenAI (API Key found, 1536d)"                  || warn "  OpenAI (no API Key)"
+    $JINA_OK   && ok "  Jina (API Key found, 1024d, affordable)"        || warn "  Jina (no API Key)"
     echo ""
 
     # Auto-select best available

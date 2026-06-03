@@ -64,7 +64,7 @@ class TestClassifier:
     def test_see_also_depends_on(self):
         """"siehe" pattern → depends_on."""
         result = classify_relation(
-            source_content="Siehe Memory System für die Konfiguration",
+            source_content="See also Memory System for the configuration",
             target_content="Memory System Configuration Guide",
             source_category="docs",
             target_category="docs",

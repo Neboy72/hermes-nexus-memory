@@ -24,10 +24,12 @@ except ImportError:
 
 qdrant_host = os.environ.get("QDRANT_HOST", "127.0.0.1")
 qdrant_port = int(os.environ.get("QDRANT_PORT", "6333"))
-collection_name = os.environ.get("NEXUS_COLLECTION", "hermes-memory")
+collection_name = os.environ.get("NEXUS_COLLECTION")  # None = use nexus.config resolution
 
 import asyncio
 import logging
+
+from nexus.config import get_collection
 
 logger = logging.getLogger("nexus-memory-mcp")
 

@@ -22,7 +22,9 @@ import os
 import sys
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
+
+from nexus.config import get_collection
 
 
 # ── Search ──────────────────────────────────────────────────────────────────
@@ -33,7 +35,7 @@ def search_knowledge(
     limit: int = 20,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory-1024d",
+    collection_name: Optional[str] = None,
 ) -> list[dict]:
     """Search Nexus Memory for canonical facts related to *topic*.
 
@@ -43,6 +45,7 @@ def search_knowledge(
     Returns results ordered by RRF score, each with:
         id, rrf_score, content, category, tier, fact_id, version_id
     """
+    collection_name = get_collection(collection_name)
     from nexus import nexus_search_hybrid
 
     raw = nexus_search_hybrid(
@@ -372,7 +375,7 @@ def export_skill(
 def list_topics(
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory-1024d",
+    collection_name: Optional[str] = None,
     min_facts: int = 3,
     max_scan: int = 2000,
 ) -> list[dict]:
@@ -387,6 +390,7 @@ def list_topics(
 
     Returns list of dicts: category, fact_count, sample_content.
     """
+    collection_name = get_collection(collection_name)
     import requests
 
     # Paginated scroll — filter in Python for consistent legacy handling

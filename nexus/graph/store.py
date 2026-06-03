@@ -1,9 +1,9 @@
 """EdgeStore — Qdrant-Payload-backed CRUD for SkillGraph edges.
 
-v2.2.0: SQLite entfernt. Edges leben direkt in den Qdrant-Point-Payloads
-der kanonischen Facts (Collection ``hermes-memory``).
+v2.2.0: SQLite removed. Edges live directly in Qdrant point payloads
+of the canonical facts (Collection ``hermes-memory``).
 
-Jeder Fact-Point trägt ein ``edges``-Feld:
+Each fact point carries an ``edges`` field:
   ``edges: [{"edge_id", "target_fact_id", "relation", "status", ...}, ...]``
 
 Queries:
@@ -33,8 +33,10 @@ from nexus.graph.schema import (
 
 _logger = logging.getLogger(__name__)
 
+from nexus.config import get_collection
+
 DEFAULT_QDRANT_URL = "http://localhost:6333"
-DEFAULT_COLLECTION = "hermes-memory"
+DEFAULT_COLLECTION: str = get_collection()
 MAX_PAGE_SIZE = 1000
 
 

@@ -25,6 +25,9 @@ SEE_ALSO_PATTERN = re.compile(
     r"\b(siehe|vgl\.?|vergleiche|see also|see:|refer to|cf\.?)\b",
     re.IGNORECASE,
 )
+# Note: German keyword patterns are intentional — they enable German
+# relation detection (requires, contradicts, etc.) for German-language
+# corpora. Multi-language support can be added by extending these regexes.
 DEPENDENCY_PATTERN = re.compile(
     r"\b(benötigt|benötigt |requires?|depends?\s+on|abhängig\s+von|based\s+on|"
     r"uses:|using|implemented\s+(with|using|via))\b",
@@ -178,6 +181,9 @@ def _check_contradiction(source_content: str, target_content: str) -> Optional[d
     target_lower = target_content.lower()
 
     # Explicit contradiction keywords
+    # Note: German contradiction keywords are intentional — they enable
+    # German-language contradiction detection alongside English patterns.
+    # Extend with additional languages as needed.
     contradicts_keywords = [
         r"\b(but|however|contrary|instead|actually|contradicts)\b",
         r"\b(widerspricht|aber|jedoch|stattdessen|tatsächlich)\b",

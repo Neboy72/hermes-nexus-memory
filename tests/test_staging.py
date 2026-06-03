@@ -11,8 +11,8 @@ import pytest
 from nexus.lifecycle import FactVersion, FactStatus
 from nexus.staging import (
     ensure_collections,
-    COLLECTION_ALL,
-    COLLECTION_CANONICAL,
+    _collection_all,
+    _collection_canonical,
 )
 
 
@@ -29,8 +29,8 @@ class TestEnsureCollections:
 
         result = ensure_collections("localhost", 6333)
 
-        assert result[COLLECTION_ALL] is True
-        assert result[COLLECTION_CANONICAL] is True
+        assert result[_collection_all()] is True
+        assert result[_collection_canonical()] is True
         mock_put.assert_not_called()
 
     @patch("nexus.staging.requests.get")
@@ -42,8 +42,8 @@ class TestEnsureCollections:
 
         result = ensure_collections("localhost", 6333)
 
-        assert result[COLLECTION_ALL] is True
-        assert result[COLLECTION_CANONICAL] is True
+        assert result[_collection_all()] is True
+        assert result[_collection_canonical()] is True
         assert mock_put.call_count == 2
 
         # Verify create payload has correct vector dimension
@@ -61,8 +61,8 @@ class TestEnsureCollections:
 
         result = ensure_collections("localhost", 6333)
 
-        assert result[COLLECTION_ALL] is False
-        assert result[COLLECTION_CANONICAL] is False
+        assert result[_collection_all()] is False
+        assert result[_collection_canonical()] is False
 
     @patch("nexus.staging.requests.get")
     @patch("nexus.staging.requests.put")
@@ -70,7 +70,7 @@ class TestEnsureCollections:
         """One collection exists, one missing → only missing is created."""
         def get_side_effect(url, **kwargs):
             resp = MagicMock()
-            if COLLECTION_CANONICAL in url:
+            if _collection_canonical() in url:
                 resp.status_code = 200  # canonical exists
             else:
                 resp.status_code = 404  # main missing
@@ -80,8 +80,8 @@ class TestEnsureCollections:
 
         result = ensure_collections("localhost", 6333)
 
-        assert result[COLLECTION_ALL] is True  # Created
-        assert result[COLLECTION_CANONICAL] is True  # Already existed
+        assert result[_collection_all()] is True  # Created
+        assert result[_collection_canonical()] is True  # Already existed
         assert mock_put.call_count == 1  # Only created one
 
 
@@ -212,7 +212,7 @@ class TestAutoEnsureCollections:
         self._reset_ensured_flag()
         from nexus.staging import _auto_ensure_collections
 
-        mock_ensure.return_value = {COLLECTION_ALL: True, COLLECTION_CANONICAL: True}
+        mock_ensure.return_value = {_collection_all(): True, _collection_canonical(): True}
         _auto_ensure_collections("localhost", 6333)
         _auto_ensure_collections("localhost", 6333)  # Second call
         _auto_ensure_collections("localhost", 6334)  # Different port
@@ -225,7 +225,7 @@ class TestAutoEnsureCollections:
         self._reset_ensured_flag()
         from nexus.staging import _auto_ensure_collections
 
-        mock_ensure.return_value = {COLLECTION_ALL: False, COLLECTION_CANONICAL: True}
+        mock_ensure.return_value = {_collection_all(): False, _collection_canonical(): True}
 
         with pytest.raises(RuntimeError, match="Failed to ensure"):
             _auto_ensure_collections("localhost", 6333)

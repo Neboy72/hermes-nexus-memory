@@ -12,7 +12,7 @@ if not query:
         print("No query provided.")
         sys.exit(0)
 
-r = HybridRetriever(qdrant_host='127.0.0.1', qdrant_port=6333, collection_name='hermes-memory')
+r = HybridRetriever(qdrant_host='127.0.0.1', qdrant_port=6333, collection_name=None)
 
 # Load or build BM25 index
 if r._bm25 is None:

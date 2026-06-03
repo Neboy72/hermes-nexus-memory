@@ -8,7 +8,7 @@ v2.2.0: Edges in Qdrant-Payloads statt SQLite.
 
 Ablauf:
   1. Scanne alle canonical Facts aus Qdrant (scroll)
-  2. Für jedes Fact: Qdrant-Suche nach ähnlichen Facts (O(n·k) statt O(n²))
+  2. For each fact: Qdrant search for similar facts (O(n·k) instead of O(n²))
   3. Threshold-Filter (≥ 0.85)
   4. Heuristische Klassifikation der Relation
   5. Dedup-Check gegen Qdrant-Payloads (statt SQLite)
@@ -151,7 +151,7 @@ class AutoDiscovery:
         # Build content-by-id lookup
         fact_map = {f["id"]: f for f in facts}
 
-        # 2. Für jedes Fact: ähnliche via Qdrant finden
+        # 2. For each fact: find similar via Qdrant
         all_candidates: list[dict] = []
         seen_pairs: set[tuple[str, str]] = set()
         errors: list[str] = []

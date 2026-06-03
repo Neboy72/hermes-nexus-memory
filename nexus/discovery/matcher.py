@@ -11,6 +11,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional
 
+from nexus.config import get_collection
+
 _logger = logging.getLogger(__name__)
 
 try:
@@ -27,7 +29,7 @@ DEFAULT_LIMIT = 5              # How many candidates per fact
 
 def scroll_facts(
     qdrant_url: str = "http://localhost:6333",
-    collection: str = "hermes-memory",
+    collection: Optional[str] = None,
     with_vectors: bool = True,
     limit_per_scroll: int = 100,
 ) -> list[dict]:
@@ -38,6 +40,7 @@ def scroll_facts(
     Returns:
         List of point dicts with ``id``, ``payload``, and optionally ``vector``.
     """
+    collection = get_collection(collection)
     if not HAS_REQUESTS:
         raise ImportError("requests is required: pip install requests")
 
@@ -84,7 +87,7 @@ def scroll_facts(
 def search_similar_facts(
     query_vector: list[float],
     qdrant_url: str = "http://localhost:6333",
-    collection: str = "hermes-memory",
+    collection: Optional[str] = None,
     top_k: int = 5,
 ) -> list[dict]:
     """Search Qdrant for facts similar to a given query vector.
@@ -92,6 +95,7 @@ def search_similar_facts(
     Returns:
         List of hit dicts with ``id``, ``score``, ``payload``.
     """
+    collection = get_collection(collection)
     if not HAS_REQUESTS:
         raise ImportError("requests is required: pip install requests")
 
@@ -127,7 +131,7 @@ def search_similar_facts(
 def match_facts_against_each_other(
     facts: list[dict],
     qdrant_url: str = "http://localhost:6333",
-    collection: str = "hermes-memory",
+    collection: Optional[str] = None,
     top_k: int = 5,
     threshold: float = 0.85,
 ) -> list[dict]:
@@ -150,6 +154,7 @@ def match_facts_against_each_other(
                 "target_payload": dict,
             }
     """
+    collection = get_collection(collection)
     candidates: list[dict] = []
     fact_ids = {f.get("id", "") for f in facts}
 

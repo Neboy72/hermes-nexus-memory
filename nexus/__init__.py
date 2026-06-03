@@ -23,7 +23,7 @@ v2.1.0+: Auto-Discovery + Graph Analytics
 
 import logging
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Optional
 
 from nexus.health import DriftDetector, DriftReport
 from nexus.retrieval import HybridRetriever
@@ -66,7 +66,9 @@ from nexus.discovery import AutoDiscovery
 from nexus.analytics import GraphAnalytics
 from nexus.graph.schema import EdgeRelation, EdgeStatus
 
-__version__ = "2.6.0"
+from nexus.config import get_collection
+
+__version__ = "2.6.1"
 
 _logger = logging.getLogger(__name__)
 
@@ -81,7 +83,7 @@ def nexus_update(
     modified_by: str | None = None,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory-1024d",
+    collection_name: Optional[str] = None,
 ) -> dict:
     """Update an existing memory point without losing metadata.
 
@@ -197,7 +199,7 @@ def nexus_remember(
     tier: int | str | None = None,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory-1024d",
+    collection_name: Optional[str] = None,
     **kwargs: Any,
 ) -> dict:
     """Store a new memory with bi-temporal metadata and optional provenance.
@@ -296,7 +298,7 @@ def nexus_consolidate(
     dry_run: bool = True,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory-1024d",
+    collection_name: Optional[str] = None,
 ) -> list[dict]:
     """Resolve detected contradictions by marking older entries as historical.
 
@@ -530,7 +532,7 @@ def nexus_query_valid(
     at_date: str | None = None,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory-1024d",
+    collection_name: Optional[str] = None,
     limit: int = 10,
 ) -> list[dict]:
     """Query memories that are valid at a specific date.
@@ -707,8 +709,8 @@ def resolve_authority(
     # Sort: lowest level number = highest authority
     # If same level and prefer_recent: newer timestamp wins
     if prefer_recent:
-        # Stabil sort: erst nach Timestamp absteigend (neuste zuerst)
-        # dann nach Level aufsteigend (stabil → gleiches Level behält Timestamp-Ordnung)
+        # Stable sort: first by timestamp descending (newest first)
+        # then ascending by level (stable → same level keeps timestamp order)
         scored.sort(key=lambda x: x[1] if x[1] else "", reverse=True)
         scored.sort(key=lambda x: x[0])
     else:
@@ -781,7 +783,7 @@ def nexus_search_hybrid(
     top_k: int = 10,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
-    collection_name: str = "hermes-memory-1024d",
+    collection_name: Optional[str] = None,
 ) -> list[dict]:
     """Hybrid search across all memories: BM25 + Vector + RRF + Tier-Boost.
 
@@ -928,7 +930,7 @@ def _embed_ollama(query: str) -> list[float] | None:
 def nexus_discover(
     categories: list[str] | None = None,
     qdrant_url: str = "http://localhost:6333",
-    collection_name: str = "hermes-memory",
+    collection_name: Optional[str] = None,
 ) -> dict:
     """Run Auto-Discovery: scan facts → find relations → store edges.
 

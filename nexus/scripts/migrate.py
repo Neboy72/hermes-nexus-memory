@@ -48,7 +48,7 @@ def read_edges_from_sqlite(db_path: str) -> list[dict]:
 
 
 def group_edges_by_source(edges: list[dict]) -> dict[str, list[dict]]:
-    """Gruppiere Edges nach source_fact_id für Qdrant-Payload-Injection."""
+    """Group edges by source_fact_id for Qdrant payload injection."""
     grouped = {}
     for e in edges:
         source = e["source_fact_id"]
@@ -73,10 +73,9 @@ def migrate(
     qdrant_url: str = "http://localhost:6333",
     dry_run: bool = False,
 ) -> dict:
-    """
-    Führe Migration durch: SQLite → Qdrant Payloads.
-    
-    Returns: dict mit Statistik.
+    """Run migration: SQLite → Qdrant Payloads.
+
+    Returns: dict with statistics.
     """
     print(f"\n🔍 Lese Edges aus: {db_path}")
     edges = read_edges_from_sqlite(db_path)
@@ -100,20 +99,20 @@ def migrate(
     print(f"\n🔗 Verbinde zu Qdrant: {qdrant_url}")
     client = QdrantClient(url=qdrant_url)
     
-    # Prüfe Collection
+    # Check collection
     collections = [c.name for c in client.get_collections().collections]
     if collection not in collections:
-        print(f"⚠️  Collection '{collection}' existiert nicht in Qdrant")
+        print(f"⚠️  Collection '{collection}' does not exist in Qdrant")
         return {"error": f"collection '{collection}' not found"}
     
-    print(f"   Collection '{collection}' gefunden")
+    print(f"   Collection '{collection}' found")
     
-    # Injektion pro Point
+    # Inject per point
     updated = 0
     errors = 0
     for source_id, payload_edges in grouped.items():
         try:
-            # Prüfe ob der Point existiert
+            # Check if the point exists
             scroll_result = client.scroll(
                 collection_name=collection,
                 limit=1,
@@ -134,18 +133,18 @@ def migrate(
                 )
                 updated += 1
                 if updated % 10 == 0:
-                    print(f"   Fortschritt: {updated}/{len(grouped)} Points aktualisiert")
+                    print(f"   Progress: {updated}/{len(grouped)} points updated")
             else:
-                _logger.warning(f"Point {source_id} nicht in Collection gefunden — überspringe")
+                _logger.warning(f"Point {source_id} not found in collection — skipping")
                 errors += 1
         except Exception as e:
-            _logger.error(f"Fehler bei Point {source_id}: {e}")
+            _logger.error(f"Error on point {source_id}: {e}")
             errors += 1
     
-    print(f"\n✅ Migration abgeschlossen:")
-    print(f"   {len(edges)} Edges gelesen")
-    print(f"   {updated} Qdrant-Points aktualisiert")
-    print(f"   {errors} Fehler")
+    print(f"\n✅ Migration complete:")
+    print(f"   {len(edges)} Edges read")
+    print(f"   {updated} Qdrant points updated")
+    print(f"   {errors} errors")
     
     return {
         "total_edges": len(edges),

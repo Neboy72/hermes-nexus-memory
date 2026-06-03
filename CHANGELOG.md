@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.6.1] — 2026-06-03
+
+### Changed
+
+- **Collection-Default-Cleanup** — 17 hardcoded `hermes-memory-1024d` references across the periphery replaced with a centralized `get_collection()` resolver:
+  - `nexus/__init__.py` (5×), `nexus/confidence.py` (2×), `nexus/export.py` (2×)
+  - `nexus/discovery/matcher.py` (3×), `nexus/graph/store.py` (1×)
+  - `nexus/health/__init__.py` (1×), `nexus/provenance/__init__.py` (1×)
+  - `nexus/retrieval/__init__.py` (1×), `nexus/staging.py` (1×)
+- **`nexus/config.py`** — new centralized `get_collection()` resolver with fallback chain:
+  1. `collection_name=` parameter
+  2. `$NEXUS_COLLECTION` env variable
+  3. `DEFAULT_COLLECTION` (None)
+  4. → `ValueError` with clear error message
+- **`nexus/staging.py`** — `COLLECTION_ALL` + `COLLECTION_CANONICAL` from module constants to lazy resolver (prevents import crash when no collection default is set)
+- **`nexus/staging.py`** — `COLLECTION_CANONICAL` dynamically derived from base collection (suffix `-canonical`) instead of hardcoded `"hermes-memory-canonical"`
+- **`mcp/main.py`** — Hardcoded `"hermes-memory"` fallback removed; uses `NEXUS_COLLECTION` env without default (None = `get_collection()` resolution)
+- **`examples/nexus_search.py`** — `collection_name=None` instead of hardcoded `'hermes-memory'`
+- **Tests**: `conftest.py` sets `NEXUS_COLLECTION=test-collection` — 224/224 pass
+
+### Fixed
+
+- **ValueError guard** instead of silent failure when no collection name is set
+
 ## [2.6.0] — 2026-06-03
 
 ### Changed (Breaking)
@@ -36,7 +60,7 @@
   - Null Token-Kosten — alles Vektor-Mathematik + Regex-Heuristiken
 - **Graph Analytics — `nexus/analytics/`** — Graph-Analyse:
   - `GraphAnalytics.hubs(top_n)` — meistvernetzte Facts
-  - `GraphAnalytics.gaps()` — isolierte Facts ohne Connections (= Wissenslücken)
+  - `GraphAnalytics.gaps()` — isolated facts without connections (= knowledge gaps)
   - `GraphAnalytics.clusters()` — Connected Components (Weakly)
   - `GraphAnalytics.full_report()` — kompletter Report + `report_text()` für Lesbarkeit
   - `GraphAnalytics.relations()` — Edge-Verteilung nach Relationstyp
@@ -59,7 +83,7 @@
 
 - v2.1.0 baut auf v2.0.0 SkillGraph auf — SQLite-EdgeStore bleibt Source of Truth
 - Discovery-Trigger: manuell (kein Cron) — `discover_all()` bei Bedarf
-- Proposed Edges sind standardmässig unsichtbar in `list_edges()` — nur bei `status='proposed'` sichtbar
+- Proposed edges are invisible by default in `list_edges()` — only visible with `status='proposed'`
 
 ## [2.0.0] — 2026-05-26
 
