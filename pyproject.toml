@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-nexus-memory"
-version = "2.1.0"
+version = "2.6.0"
 description = "Persistent vector memory for Hermes Agent — SkillGraph, hybrid retrieval, drift detection, anti-poisoning, skill export"
 readme = "README.md"
 license = "MIT"
@@ -33,6 +33,12 @@ dependencies = [
     "networkx>=3.0",
 ]
 
+[project.scripts]
+nexus-export = "nexus.export:cli_main"
+nexus-migrate = "nexus.scripts.migrate:main"
+nexus-discover = "nexus.scripts.discover:main"
+nexus-graph-report = "nexus.scripts.graph_report:main"
+
 [project.optional-dependencies]
 hybrid = ["bm25s>=0.3"]
 health = ["sentence-transformers", "scikit-learn"]
@@ -47,6 +53,3 @@ all = [
 
 [tool.setuptools.packages.find]
 include = ["nexus*"]
-
-[project.scripts]
-nexus-export = "nexus.export:cli_main"

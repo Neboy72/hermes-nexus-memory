@@ -4,12 +4,14 @@ v2.1.0: Erkennt semantische Relationen zwischen Facts ohne LLM.
 Nutzt Qdrant-native Vector Search + Regex-Heuristiken.
 Keine neuen Dependencies. Null Token-Kosten.
 
+v2.2.0: Edges in Qdrant-Payloads statt SQLite.
+
 Ablauf:
   1. Scanne alle canonical Facts aus Qdrant (scroll)
   2. Für jedes Fact: Qdrant-Suche nach ähnlichen Facts (O(n·k) statt O(n²))
   3. Threshold-Filter (≥ 0.85)
   4. Heuristische Klassifikation der Relation
-  5. Dedup-Check gegen SQLite
+  5. Dedup-Check gegen Qdrant-Payloads (statt SQLite)
   6. Insert als active (confidence ≥ 0.85) oder proposed (< 0.85)
 
 Usage::
@@ -34,7 +36,7 @@ from nexus.graph.store import EdgeStore
 _logger = logging.getLogger(__name__)
 
 DEFAULT_QDRANT_URL = "http://localhost:6333"
-DEFAULT_COLLECTION = "hermes-memory-1024d"
+DEFAULT_COLLECTION = None  # Kein Default — muss aus Config kommen
 DEFAULT_TOP_K = 5
 
 # Confidence thresholds (from Miosha review, confirmed 27.05.2026)
@@ -69,21 +71,30 @@ class AutoDiscovery:
     """Automatic relation discovery between canonical facts.
 
     Scans all canonical facts in Qdrant, finds similar pairs,
-    classifies relations, and stores them in the SQLite EdgeStore.
+    classifies relations, and stores edges in Qdrant-Payloads.
     """
 
     def __init__(
         self,
         store: Optional[EdgeStore] = None,
         qdrant_url: str = DEFAULT_QDRANT_URL,
-        collection: str = DEFAULT_COLLECTION,
+        collection: Optional[str] = DEFAULT_COLLECTION,
         top_k: int = DEFAULT_TOP_K,
-        sqlite_path: Optional[str] = None,
     ):
+        if collection is None:
+            raise ValueError(
+                "collection must be explicitly provided. "
+                "Set it in your config (e.g., plugins.nexus-memory.nexus_collection) "
+                "and pass it to AutoDiscovery(). "
+                "Code-default removed to prevent silent collection mismatches."
+            )
         self._qdrant_url = qdrant_url
         self._collection = collection
         self._top_k = top_k
-        self._store = store or EdgeStore(db_path=sqlite_path)
+        self._store = store or EdgeStore(
+            qdrant_url=qdrant_url,
+            collection=collection,
+        )
 
     @property
     def store(self) -> EdgeStore:

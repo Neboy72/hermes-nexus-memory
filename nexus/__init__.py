@@ -66,7 +66,7 @@ from nexus.discovery import AutoDiscovery
 from nexus.analytics import GraphAnalytics
 from nexus.graph.schema import EdgeRelation, EdgeStatus
 
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 
 _logger = logging.getLogger(__name__)
 
@@ -927,18 +927,18 @@ def _embed_ollama(query: str) -> list[float] | None:
 
 def nexus_discover(
     categories: list[str] | None = None,
-    sqlite_path: str | None = None,
     qdrant_url: str = "http://localhost:6333",
-    collection_name: str = "hermes-memory-1024d",
+    collection_name: str = "hermes-memory",
 ) -> dict:
     """Run Auto-Discovery: scan facts → find relations → store edges.
 
     Convenience wrapper around ``AutoDiscovery.discover_all()``.
-    EdgeStore is initialized automatically (creates tables if needed).
+    EdgeStore is initialized automatically.
+
+    v2.2.0: Qdrant-Payload backing (was SQLite). No more sqlite_path.
 
     Args:
         categories: Optional — only discover within these categories.
-        sqlite_path: Path to SQLite DB (default: ``~/.hermes/skillgraph.db``).
         qdrant_url: Qdrant HTTP URL.
         collection_name: Qdrant collection name.
 
@@ -949,26 +949,30 @@ def nexus_discover(
     from nexus.discovery import AutoDiscovery
     from nexus.graph.store import EdgeStore
 
-    store = EdgeStore(db_path=sqlite_path)
+    store = EdgeStore(qdrant_url=qdrant_url, collection=collection_name)
     ad = AutoDiscovery(
         store=store,
         qdrant_url=qdrant_url,
-        collection_name=collection_name,
+        collection=collection_name,
     )
     ad.initialize()
     return ad.discover_all(categories=categories)
 
 
 def nexus_graph_report(
-    sqlite_path: str | None = None,
+    qdrant_url: str | None = None,
+    collection: str | None = None,
     as_text: bool = False,
 ) -> dict | str:
     """Generate a comprehensive SkillGraph analytics report.
 
     Convenience wrapper around ``GraphAnalytics.full_report()``.
 
+    v2.2.0: Qdrant-Payload (was SQLite). No more sqlite_path.
+
     Args:
-        sqlite_path: Path to SQLite DB (default: ``~/.hermes/skillgraph.db``).
+        qdrant_url: Qdrant HTTP URL.
+        collection: Qdrant collection name.
         as_text: If True, return formatted text instead of dict.
 
     Returns:
@@ -978,7 +982,7 @@ def nexus_graph_report(
     from nexus.graph.graph import SkillGraph
     from nexus.analytics import GraphAnalytics
 
-    sg = SkillGraph(sqlite_path=sqlite_path)
+    sg = SkillGraph(qdrant_url=qdrant_url, collection=collection)
     sg.initialize()
     analytics = GraphAnalytics(sg)
     report = analytics.full_report()

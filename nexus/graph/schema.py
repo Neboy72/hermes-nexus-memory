@@ -1,10 +1,13 @@
-"""SkillGraph schema — Edge dataclass, enums, SQLite DDL.
+"""SkillGraph schema — Edge dataclass, enums, Qdrant Payload Schema.
 
-Design decisions (verified by Miosha, v2.0.0 review):
-  - relation and status are separate columns (never mixed).
-  - UNIQUE on (source_fact_id, target_fact_id, relation, status) where
-    status = 'active' — prevents duplicate active edges.
+v2.2.0: SQLite entfernt. Edges leben direkt in Qdrant-Point-Payloads.
+Jeder Fact-Point hat ein ``edges``-Feld (Array von Edge-Objekten).
+
+Design decisions (v2.0.0 review by Miosha, migrated to Qdrant in v2.2.0):
+  - relation and status are separate fields (never mixed).
   - edge_id is a UUID primary key.
+  - Edges are stored ONCE in the source-fact's payload (not duplicated on target).
+  - Incoming edges are found via Qdrant nested-Filter on ``edges[].target_fact_id``.
   - deprecated_at is NULL until the edge is rejected.
 """
 
@@ -14,7 +17,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 
 # ── Enums ──────────────────────────────────────────────────────────────────
@@ -25,6 +28,7 @@ class EdgeRelation(str, Enum):
 
     Core: v2.0.0
     Extended: v2.1.0 — added ``references`` (auto-discovered similarity).
+    v2.2.0: unchanged.
     """
 
     SUPERSEDES = "supersedes"        # A replaces B (B is obsolete)
@@ -40,6 +44,7 @@ class EdgeStatus(str, Enum):
 
     Core: active → deprecated | rejected
     Extended: v2.1.0 — ``proposed`` for auto-discovered edges awaiting confirmation.
+    v2.2.0: unchanged.
     """
     ACTIVE = "active"
     PROPOSED = "proposed"      # Auto-discovered, needs human confirmation
@@ -52,10 +57,15 @@ class EdgeStatus(str, Enum):
 
 @dataclass
 class Edge:
-    """A single directed edge between two facts in the SkillGraph."""
+    """A single directed edge between two facts in the SkillGraph.
+
+    v2.2.0: Stored in Qdrant-Point-Payload as part of the ``edges[]`` array.
+    ``metadata`` is a native dict (Qdrant JSON), not a JSON string.
+    ``source_fact_id`` is the Qdrant Point ID where this edge lives.
+    """
 
     edge_id: str
-    source_fact_id: str               # from-fact
+    source_fact_id: str               # from-fact (Qdrant Point ID)
     target_fact_id: str               # to-fact
     relation: str                     # EdgeRelation value
     status: str                       # EdgeStatus value
@@ -63,7 +73,7 @@ class Edge:
     updated_at: str                   # ISO timestamp
     deprecated_at: Optional[str] = None  # set on reject / deprecate
     reason: Optional[str] = None      # why this edge was created or rejected
-    metadata_json: Optional[str] = None  # optional JSON blob
+    metadata: Optional[dict[str, Any]] = None  # native dict (not JSON string)
 
     @classmethod
     def new(
@@ -72,7 +82,7 @@ class Edge:
         target_fact_id: str,
         relation: str,
         reason: Optional[str] = None,
-        metadata_json: Optional[str] = None,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> "Edge":
         now = datetime.now(timezone.utc).isoformat()
         return cls(
@@ -84,13 +94,13 @@ class Edge:
             created_at=now,
             updated_at=now,
             reason=reason,
-            metadata_json=metadata_json,
+            metadata=metadata,
         )
 
-    def to_dict(self) -> dict:
+    def to_payload_entry(self) -> dict[str, Any]:
+        """Serialize to a Qdrant-Payload-safe dict (excludes source_fact_id)."""
         return {
             "edge_id": self.edge_id,
-            "source_fact_id": self.source_fact_id,
             "target_fact_id": self.target_fact_id,
             "relation": self.relation,
             "status": self.status,
@@ -98,14 +108,43 @@ class Edge:
             "updated_at": self.updated_at,
             "deprecated_at": self.deprecated_at,
             "reason": self.reason,
-            "metadata_json": self.metadata_json,
+            "metadata": self.metadata,
         }
 
     @classmethod
+    def from_payload_entry(
+        cls,
+        entry: dict[str, Any],
+        source_fact_id: str,
+    ) -> "Edge":
+        """Deserialize from a Qdrant-Payload entry."""
+        return cls(
+            edge_id=entry["edge_id"],
+            source_fact_id=source_fact_id,
+            target_fact_id=entry["target_fact_id"],
+            relation=entry["relation"],
+            status=entry.get("status", EdgeStatus.ACTIVE.value),
+            created_at=entry.get("created_at", ""),
+            updated_at=entry.get("updated_at", ""),
+            deprecated_at=entry.get("deprecated_at"),
+            reason=entry.get("reason"),
+            metadata=entry.get("metadata"),
+        )
+
+    # ── Legacy backwards compat ────────────────────────────────────────
+
+    def to_dict(self) -> dict[str, Any]:
+        """Legacy: dict with all fields including source_fact_id."""
+        d = self.to_payload_entry()
+        d["source_fact_id"] = self.source_fact_id
+        return d
+
+    @classmethod
     def from_dict(cls, d: dict) -> "Edge":
+        """Legacy: reconstruct from dict (for migration / tests)."""
         return cls(
             edge_id=d["edge_id"],
-            source_fact_id=d["source_fact_id"],
+            source_fact_id=d.get("source_fact_id", ""),
             target_fact_id=d["target_fact_id"],
             relation=d["relation"],
             status=d.get("status", EdgeStatus.ACTIVE.value),
@@ -113,55 +152,11 @@ class Edge:
             updated_at=d.get("updated_at", ""),
             deprecated_at=d.get("deprecated_at"),
             reason=d.get("reason"),
-            metadata_json=d.get("metadata_json"),
+            metadata=d.get("metadata"),
         )
 
 
-# ── SQLite DDL ─────────────────────────────────────────────────────────────
+# ── Payload Field Names ────────────────────────────────────────────────────
 
-
-CREATE_EDGES_TABLE = """
-CREATE TABLE IF NOT EXISTS edges (
-    edge_id          TEXT PRIMARY KEY,
-    source_fact_id   TEXT NOT NULL,
-    target_fact_id   TEXT NOT NULL,
-    relation         TEXT NOT NULL,
-    status           TEXT NOT NULL DEFAULT 'active',
-    created_at       TEXT NOT NULL,
-    updated_at       TEXT NOT NULL,
-    deprecated_at    TEXT,
-    reason           TEXT,
-    metadata_json    TEXT
-);
-"""
-
-CREATE_EDGES_INDEX_ACTIVE_UNIQUE = """
-CREATE UNIQUE INDEX IF NOT EXISTS idx_edges_active_unique
-    ON edges(source_fact_id, target_fact_id, relation)
-    WHERE status = 'active';
-"""
-
-CREATE_EDGES_INDEX_SOURCE = """
-CREATE INDEX IF NOT EXISTS idx_edges_source
-    ON edges(source_fact_id);
-"""
-
-CREATE_EDGES_INDEX_TARGET = """
-CREATE INDEX IF NOT EXISTS idx_edges_target
-    ON edges(target_fact_id);
-"""
-
-CREATE_EDGES_INDEX_STATUS = """
-CREATE INDEX IF NOT EXISTS idx_edges_status
-    ON edges(status);
-"""
-
-
-def get_create_statements() -> list[str]:
-    return [
-        CREATE_EDGES_TABLE,
-        CREATE_EDGES_INDEX_ACTIVE_UNIQUE,
-        CREATE_EDGES_INDEX_SOURCE,
-        CREATE_EDGES_INDEX_TARGET,
-        CREATE_EDGES_INDEX_STATUS,
-    ]
+EDGES_PAYLOAD_KEY = "edges"
+"""Qdrant-Payload key under which the edge-array is stored."""

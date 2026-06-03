@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.6.0] — 2026-06-03
+
+### Changed (Breaking)
+
+- **EdgeStore: SQLite → Qdrant-Payloads** — Der SkillGraph speichert Edges nicht mehr in einer separaten SQLite-DB (`skillgraph.db`), sondern direkt in den Qdrant-Point-Payloads (Feld `edges: [...]`). Single Source of Truth: Qdrant.
+  - `EdgeStore.__init__()` akzeptiert `qdrant_url`/`collection`/`client` statt `db_path`
+  - `SkillGraph.__init__()` akzeptiert `qdrant_url`/`collection` statt `sqlite_path`
+  - `AutoDiscovery.__init__()` ohne `sqlite_path`
+  - `nexus_discover()` / `nexus_graph_report()` auf neue API umgestellt
+  - Edge-Dataclass: `metadata` ist native dict (nicht JSON-String)
+- **Qdrant embedded kompatibel** — alle Tests nutzen `QdrantClient(path=...)` statt Server
+
+### Removed
+
+- SQLite DDL aus `schema.py` (`CREATE_EDGES_TABLE`, `CREATE_EDGES_INDEX_*`, `get_create_statements()`)
+- `EdgeStore.conn` — wirft jetzt klaren Error (kein SQLite mehr)
+- `EdgeStore._db_path` — kein DB-Pfad mehr
+
+### Fixed
+
+- `InvalidRelationError` erbt von `(EdgeStoreError, ValueError)` — retro-kompatibel
+- `scroll_filter=` statt `filter=` in Qdrant local-mode calls
+
 ## [2.1.0] — 2026-05-27
 
 ### Added

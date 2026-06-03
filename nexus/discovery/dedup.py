@@ -1,6 +1,7 @@
 """Deduplication — check edges to avoid re-discovering known relations.
 
-v2.1.0: Checks against SQLite EdgeStore. Supports both active and proposed edges.
+v2.1.0: Checks against EdgeStore. Supports both active and proposed edges.
+v2.2.0: EdgeStore backed by Qdrant-Payloads (was SQLite). API unchanged.
 """
 
 from __future__ import annotations
@@ -53,10 +54,11 @@ def filter_new_edges(
 
 
 def count_existing(store: EdgeStore, source: str, target: str) -> int:
-    """Count how many edges (any status) exist between two facts."""
-    rows = store.conn.execute(
-        """SELECT COUNT(*) FROM edges
-           WHERE source_fact_id = ? AND target_fact_id = ?""",
-        (source, target),
-    ).fetchone()
-    return rows[0] if rows else 0
+    """Count how many edges (any status) exist between two facts.
+
+    v2.2.0: Uses EdgeStore.list_edges() instead of raw SQL.
+    """
+    edges = store.list_edges(fact_id=source, status=None)
+    return sum(
+        1 for e in edges if e.target_fact_id == target
+    )

@@ -5,17 +5,28 @@ v2.1.0: ~25 tests covering the full discovery pipeline.
 
 from __future__ import annotations
 
-import json
 import os
 import tempfile
+import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
+from qdrant_client import QdrantClient, models
 
 from nexus.discovery.classifier import classify_relation, _check_explicit_reference
 from nexus.discovery.dedup import filter_new_edges
 from nexus.graph.schema import EdgeRelation
 from nexus.graph.store import EdgeStore
+
+
+def fact_id(name: str) -> str:
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, name))
+
+
+F_A = fact_id("fact-a")
+F_B = fact_id("fact-b")
+F_C = fact_id("fact-c")
+F_D = fact_id("fact-d")
 
 
 # ── Classifier Tests ──────────────────────────────────────────────────────
@@ -29,8 +40,8 @@ class TestClassifier:
             target_content="Kiosha manages the system",
             source_category="agent",
             target_category="agent",
-            source_id="fact-a",
-            target_id="fact-b",
+            source_id=F_A,
+            target_id=F_B,
             similarity_score=0.92,
         )
         assert result["relation"] == "references"
@@ -43,8 +54,8 @@ class TestClassifier:
             target_content="Kiosha Agent is the lead system",
             source_category="docs",
             target_category="docs",
-            source_id="fact-a",
-            target_id="fact-b",
+            source_id=F_A,
+            target_id=F_B,
             similarity_score=0.95,
         )
         assert result["relation"] == "depends_on"
@@ -57,8 +68,8 @@ class TestClassifier:
             target_content="Memory System Configuration Guide",
             source_category="docs",
             target_category="docs",
-            source_id="fact-a",
-            target_id="fact-b",
+            source_id=F_A,
+            target_id=F_B,
             similarity_score=0.88,
         )
         assert result["relation"] == "depends_on"
@@ -70,8 +81,8 @@ class TestClassifier:
             target_content="Memory System handles persistence",
             source_category="config",
             target_category="config",
-            source_id="fact-a",
-            target_id="fact-b",
+            source_id=F_A,
+            target_id=F_B,
             similarity_score=0.85,
         )
         assert result["relation"] == "depends_on"
@@ -83,8 +94,8 @@ class TestClassifier:
             target_content="The port is 3000 for the service",
             source_category="config",
             target_category="config",
-            source_id="fact-a",
-            target_id="fact-b",
+            source_id=F_A,
+            target_id=F_B,
             similarity_score=0.70,
         )
         # May or may not detect contradiction depending on keyword overlap
@@ -98,8 +109,8 @@ class TestClassifier:
             target_content="v2.0.0 was the previous version",
             source_category="release",
             target_category="release",
-            source_id="fact-a",
-            target_id="fact-b",
+            source_id=F_A,
+            target_id=F_B,
             similarity_score=0.80,
         )
         assert result is not None
@@ -111,8 +122,8 @@ class TestClassifier:
             target_content="Best pizza toppings in Berlin",
             source_category="tech",
             target_category="food",
-            source_id="fact-a",
-            target_id="fact-b",
+            source_id=F_A,
+            target_id=F_B,
             similarity_score=0.86,  # Just above threshold
         )
         # Should return None because similarity < 0.90 and no category/explicit match
@@ -125,8 +136,8 @@ class TestClassifier:
             target_content="Qdrant provides approximate nearest neighbor search",
             source_category="tech",
             target_category="tech",
-            source_id="fact-a",
-            target_id="fact-b",
+            source_id=F_A,
+            target_id=F_B,
             similarity_score=0.95,
         )
         assert result is not None
@@ -139,8 +150,8 @@ class TestClassifier:
             target_content="Kiosha manages memory Kiosha handles search Kiosha routes",
             source_category="agent",
             target_category="agent",
-            source_id="fact-a",
-            target_id="fact-b",
+            source_id=F_A,
+            target_id=F_B,
             similarity_score=0.93,
         )
         assert result["relation"] == "references"
@@ -152,8 +163,8 @@ class TestClassifier:
             target_content="",
             source_category="",
             target_category="",
-            source_id="fact-a",
-            target_id="fact-b",
+            source_id=F_A,
+            target_id=F_B,
             similarity_score=0.50,
         )
         # Should not crash
@@ -166,8 +177,8 @@ class TestClassifier:
             target_content="Konfiguration der Überwachung",
             source_category="config",
             target_category="config",
-            source_id="fact-a",
-            target_id="fact-b",
+            source_id=F_A,
+            target_id=F_B,
             similarity_score=0.88,
         )
         assert result is not None
@@ -180,8 +191,8 @@ class TestClassifier:
             target_content="OpenAir Festival configuration",
             source_category="docs",
             target_category="docs",
-            source_id="fact-a",
-            target_id="fact-b",
+            source_id=F_A,
+            target_id=F_B,
             similarity_score=0.87,
         )
         # 'Open' is only 4 chars so it won't match target_keywords (needs >3 chars + kw in link_lower)
@@ -196,49 +207,62 @@ class TestClassifier:
 class TestDedup:
     @pytest.fixture
     def store(self):
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-            db_path = f.name
-        store = EdgeStore(db_path=db_path)
-        store.initialize()
-        yield store
-        os.unlink(db_path)
+        with tempfile.TemporaryDirectory() as tmp:
+            from qdrant_client import QdrantClient, models
+            client = QdrantClient(path=os.path.join(tmp, "qdrant"))
+            client.create_collection(
+                collection_name="test-memory",
+                vectors_config=models.VectorParams(size=2, distance=models.Distance.COSINE),
+            )
+            # Create needed fact-points
+            all_ids = [F_A, F_B, F_C, F_D]
+            client.upsert(
+                collection_name="test-memory",
+                points=[
+                    models.PointStruct(id=fid, vector=[0.0, 0.0], payload={"content": f"Test {fid}"})
+                    for fid in all_ids
+                ],
+            )
+            store = EdgeStore(client=client, collection="test-memory")
+            store.initialize()
+            yield store
 
     def test_filter_new_edges_all_new(self, store):
         """All candidates are new → all pass through."""
         candidates = [
-            {"source": "fact-a", "target": "fact-b", "relation": "references"},
-            {"source": "fact-c", "target": "fact-d", "relation": "supports"},
+            {"source": F_A, "target": F_B, "relation": "references"},
+            {"source": F_C, "target": F_D, "relation": "supports"},
         ]
         result = filter_new_edges(candidates, store)
         assert len(result) == 2
 
     def test_filter_new_edges_some_duplicates(self, store):
         """Existing edges are filtered out."""
-        store.add_edge("fact-a", "fact-b", "references", reason="test")
+        store.add_edge(F_A, F_B, "references", reason="test")
         candidates = [
-            {"source": "fact-a", "target": "fact-b", "relation": "references"},
-            {"source": "fact-c", "target": "fact-d", "relation": "supports"},
+            {"source": F_A, "target": F_B, "relation": "references"},
+            {"source": F_C, "target": F_D, "relation": "supports"},
         ]
         result = filter_new_edges(candidates, store)
         assert len(result) == 1
-        assert result[0]["source"] == "fact-c"
+        assert result[0]["source"] == F_C
 
     def test_filter_new_edges_all_duplicates(self, store):
         """All existing → empty result."""
-        store.add_edge("fact-a", "fact-b", "references", reason="test")
-        store.add_edge("fact-c", "fact-d", "supports", reason="test")
+        store.add_edge(F_A, F_B, "references", reason="test")
+        store.add_edge(F_C, F_D, "supports", reason="test")
         candidates = [
-            {"source": "fact-a", "target": "fact-b", "relation": "references"},
-            {"source": "fact-c", "target": "fact-d", "relation": "supports"},
+            {"source": F_A, "target": F_B, "relation": "references"},
+            {"source": F_C, "target": F_D, "relation": "supports"},
         ]
         result = filter_new_edges(candidates, store)
         assert len(result) == 0
 
     def test_filter_new_edges_skips_proposed(self, store):
         """Proposed edges are also filtered out."""
-        store.add_proposed_edge("fact-a", "fact-b", "references", confidence=0.75)
+        store.add_proposed_edge(F_A, F_B, "references", confidence=0.75)
         candidates = [
-            {"source": "fact-a", "target": "fact-b", "relation": "references"},
+            {"source": F_A, "target": F_B, "relation": "references"},
         ]
         result = filter_new_edges(candidates, store)
         assert len(result) == 0
@@ -251,9 +275,9 @@ class TestDedup:
     def test_filter_missing_keys(self, store):
         """Candidates missing source/target → gracefully skipped."""
         candidates = [
-            {"source": "fact-a", "relation": "references"},  # Missing target
-            {"target": "fact-b", "relation": "supports"},     # Missing source
-            {"source": "fact-c", "target": "fact-d", "relation": "references"},
+            {"source": F_A, "relation": "references"},  # Missing target
+            {"target": F_B, "relation": "supports"},     # Missing source
+            {"source": F_C, "target": F_D, "relation": "references"},
         ]
         result = filter_new_edges(candidates, store)
         assert len(result) == 1
@@ -293,14 +317,14 @@ class TestAutoDiscoveryPipeline:
     def test_auto_discovery_init_no_qdrant(self):
         """AutoDiscovery initialises without Qdrant."""
         from nexus.discovery import AutoDiscovery
-        # Should not crash — no Qdrant calls in __init__
-        ad = AutoDiscovery()
+        # Must pass collection explicitly (no default since v2.2.0)
+        ad = AutoDiscovery(collection="test-collection")
         assert ad is not None
         assert ad.store is not None
 
     def test_discover_for_fact_empty_vector(self):
         """Empty vector → empty result."""
         from nexus.discovery import AutoDiscovery
-        ad = AutoDiscovery()
-        result = ad.discover_for_fact("fact-a", "content", "category", [])
+        ad = AutoDiscovery(collection="test-collection")
+        result = ad.discover_for_fact(F_A, "content", "category", [])
         assert result == []
