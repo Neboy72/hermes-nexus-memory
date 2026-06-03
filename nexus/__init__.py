@@ -66,7 +66,7 @@ from nexus.discovery import AutoDiscovery
 from nexus.analytics import GraphAnalytics
 from nexus.graph.schema import EdgeRelation, EdgeStatus
 
-__version__ = "2.2.0"
+__version__ = "2.6.0"
 
 _logger = logging.getLogger(__name__)
 
