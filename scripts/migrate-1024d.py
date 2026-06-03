@@ -8,7 +8,7 @@ QDRANT = "http://localhost:6333"
 OLD_COL = "hermes-memory"
 NEW_COL = "hermes-memory-1024d"
 BATCH = 100
-VOYAGE_KEY = os.environ.get("VOYAGE_API_KEY") or "pa--jR64VADYQx-9KVVnywmMGShoqQJ-E_SxCD-H2LGWdK"
+VOYAGE_KEY = os.environ.get("VOYAGE_API_KEY")
 
 def embed(texts):
     """Batch embed via Voyage 3 Large."""

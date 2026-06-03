@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-"""SkillGraph — NetworkX-accelerated edge queries over SQLite.
+"""SkillGraph — NetworkX-accelerated edge queries over Qdrant-Payloads.
 
-Designed as a **cache / view** over the SQLite edge store.
-Every mutation (``add_edge``, ``reject_edge``) goes to SQLite first,
+v2.2.0: Qdrant-Payload statt SQLite. Der EdgeStore speichert Edges direkt
+in den Qdrant-Point-Payloads. NetworkX bleibt als Read-Layer/Cache.
+
+Every mutation (``add_edge``, ``reject_edge``) goes to Qdrant-Payload first,
 then the local NetworkX graph is rebuilt from the store.
 
-Non-goals for v2.0.0:
+Non-goals for v2.0.0 (unchanged):
   - Auto-discovery (v2.1.0)
   - Weighted / ranked path search
   - Graph analytics
@@ -25,22 +27,27 @@ _logger = logging.getLogger(__name__)
 
 
 class SkillGraph:
-    """NetworkX-backed query layer over the SQLite edge store.
+    """NetworkX-backed query layer over the Qdrant-Payload edge store.
 
     Usage::
 
         sg = SkillGraph()
-        sg.initialize()           # creates SQLite tables + builds NetworkX cache
+        sg.initialize()           # connects to Qdrant + builds NetworkX cache
         sg.add_edge("fact-a", "fact-b", "supports")
         sg.add_edge("fact-b", "fact-c", "depends_on")
         path = sg.find_path("fact-a", "fact-c")  # BFS
     """
 
-    def __init__(self, store: EdgeStore | None = None, sqlite_path: str | None = None):
-        if store is not None:
-            self._store = store
-        else:
-            self._store = EdgeStore(db_path=sqlite_path)
+    def __init__(
+        self,
+        store: EdgeStore | None = None,
+        qdrant_url: str | None = None,
+        collection: str | None = None,
+    ):
+        self._store = store or EdgeStore(
+            qdrant_url=qdrant_url,
+            collection=collection,
+        )
         self._graph: nx.DiGraph = nx.DiGraph()
 
     # ── Store access ────────────────────────────────────────────────────────
@@ -52,7 +59,7 @@ class SkillGraph:
     # ── Delegated store queries ─────────────────────────────────────────────
 
     def get_edge(self, edge_id: str) -> Edge | None:
-        """Fetch a single edge by ID (delegates to SQLite store)."""
+        """Fetch a single edge by ID (delegates to Qdrant store)."""
         return self._store.get_edge(edge_id)
 
     def list_edges(
@@ -61,24 +68,21 @@ class SkillGraph:
         relation: str | None = None,
         status: str | None = "active",
     ) -> list[Edge]:
-        """List edges from SQLite store with optional filters.
+        """List edges from Qdrant-Payload store with optional filters.
 
-        See ``EdgeStore.list_edges()`` for details on symmetric contradicts.
+        See ``EdgeStore.list_edges()`` for details on bidirectional listing.
         """
         return self._store.list_edges(fact_id=fact_id, relation=relation, status=status)
 
     # ── Setup ───────────────────────────────────────────────────────────────
 
     def initialize(self) -> None:
-        """Create the SQLite schema and build the NetworkX cache."""
+        """Connect to Qdrant and build the NetworkX cache."""
         self._store.initialize()
         self._rebuild()
 
     def _rebuild(self) -> None:
-        """Re-read all active edges from SQLite into NetworkX.
-
-        Called after every mutation (add / reject / deprecate).
-        """
+        """Re-read all active edges from Qdrant into NetworkX."""
         self._graph.clear()
         edges = self._store.list_edges(status="active")
 
@@ -98,7 +102,10 @@ class SkillGraph:
             if rel == EdgeRelation.CONTRADICTS.value:
                 self._graph.add_edge(target, source, relation=rel, edge_id=edge.edge_id)
 
-        _logger.debug("SkillGraph rebuilt: %d nodes, %d edges", self._graph.order(), self._graph.size())
+        _logger.debug(
+            "SkillGraph rebuilt: %d nodes, %d edges",
+            self._graph.order(), self._graph.size(),
+        )
 
     # ── Queries (operate on NetworkX cache) ─────────────────────────────────
 
@@ -199,7 +206,7 @@ class SkillGraph:
 
         return []  # No path found
 
-    # ── Mutations (SQLite first, NetworkX incremental update) ─────────────────
+    # ── Mutations (Qdrant-Payload first, NetworkX incremental update) ───────
 
     def _add_edge_to_graph(self, edge: Edge) -> None:
         """Add a single active edge to the NetworkX cache."""
@@ -235,7 +242,7 @@ class SkillGraph:
         reason: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> Edge:
-        """Add an edge via SQLite, then update NetworkX incrementally."""
+        """Add an edge via Qdrant-Payload, then update NetworkX incrementally."""
         edge = self._store.add_edge(
             source_fact_id=source_fact_id,
             target_fact_id=target_fact_id,
@@ -247,14 +254,14 @@ class SkillGraph:
         return edge
 
     def reject_edge(self, edge_id: str, reason: str | None = None) -> Edge | None:
-        """Reject an edge via SQLite, then update NetworkX incrementally."""
+        """Reject an edge via Qdrant-Payload, then update NetworkX incrementally."""
         edge = self._store.reject_edge(edge_id, reason=reason)
         if edge:
             self._remove_edge_from_graph(edge)
         return edge
 
     def deprecate_edge(self, edge_id: str, reason: str | None = None) -> Edge | None:
-        """Deprecate an edge via SQLite, then update NetworkX incrementally."""
+        """Deprecate an edge via Qdrant-Payload, then update NetworkX incrementally."""
         edge = self._store.deprecate_edge(edge_id, reason=reason)
         if edge:
             self._remove_edge_from_graph(edge)
@@ -267,7 +274,7 @@ class SkillGraph:
             "nodes": self._graph.order(),
             "edges": self._graph.size(),
             "stored_edges": self._store.count_edges(status="active"),
-            "db_path": self._store._db_path,
+            "collection": self._store._collection,
         }
 
     # ── Chain Queries ───────────────────────────────────────────────────
