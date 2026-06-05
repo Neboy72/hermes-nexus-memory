@@ -154,7 +154,7 @@ class EdgeStore:
         )
 
     def _scroll_point(
-4from qdrant_client import models
+        from qdrant_client import models
 
         self,
         point_id: str,
