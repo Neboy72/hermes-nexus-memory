@@ -22,7 +22,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from qdrant_client import QdrantClient, models
+# Lazy import — qdrant-client is optional ([all] extra)
+# Imported locally in __init__ and methods that need it
 
 from nexus.graph.schema import (
     Edge,
@@ -70,6 +71,8 @@ class EdgeStore:
     """
 
     def __init__(
+        from qdrant_client import QdrantClient, models
+
         self,
         qdrant_url: str | None = None,
         collection: str | None = None,
