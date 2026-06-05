@@ -25,12 +25,16 @@ That's it. Qdrant client is included — no extra pip commands.
 
 ### 2. Start Qdrant
 
-**With Docker (recommended):**
+The setup script detects your OS and starts Qdrant automatically:
+
 ```bash
-docker run -d --name qdrant -p 6333:6333 qdrant/qdrant:v1.17
+curl -sL https://raw.githubusercontent.com/Neboy72/hermes-nexus-memory/main/setup.sh | bash
 ```
 
-**Without Docker** — [Download Qdrant](https://qdrant.tech/documentation/quick-start/) for your OS and run `./qdrant`.
+Or manually:
+- **macOS:** `brew install qdrant && brew services start qdrant`
+- **Linux:** `docker run -d --name qdrant -p 6333:6333 qdrant/qdrant:v1.17`
+- **Already running?** `curl http://127.0.0.1:6333/healthz` to verify
 
 ### 3. Verify installation
 
@@ -92,7 +96,12 @@ python3 -c "from nexus import nexus_search; print(nexus_search('Mac Mini'))"
 
 ```bash
 # 1. Upgrade the package
+curl -sL https://raw.githubusercontent.com/Neboy72/hermes-nexus-memory/main/setup.sh | bash  # detects upgrade automatically
+
+Or manually:
+```bash
 pip install --upgrade hermes-nexus-memory
+```
 
 # 2. Restart your Hermes gateway (if used as plugin)
 hermes gateway restart
