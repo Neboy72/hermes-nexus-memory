@@ -201,6 +201,8 @@ class EdgeStore:
             DuplicateEdgeError: If a duplicate active edge already exists.
             EdgeStoreError: If the source point does not exist.
         """
+        from qdrant_client import models
+
         self._validate_relation(relation)
 
         # Check source point exists
