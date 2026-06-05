@@ -71,7 +71,6 @@ class EdgeStore:
     """
 
     def __init__(
-        from qdrant_client import QdrantClient, models
 
         self,
         qdrant_url: str | None = None,
