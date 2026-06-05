@@ -94,11 +94,14 @@ python3 -c "from nexus import nexus_search; print(nexus_search('Mac Mini'))"
 
 ### v1.x → v2.x or v2.x → latest
 
+Run the setup script — it detects existing installations and upgrades automatically:
+
 ```bash
-# 1. Upgrade the package
-curl -sL https://raw.githubusercontent.com/Neboy72/hermes-nexus-memory/main/setup.sh | bash  # detects upgrade automatically
+curl -sL https://raw.githubusercontent.com/Neboy72/hermes-nexus-memory/main/setup.sh | bash
+```
 
 Or manually:
+
 ```bash
 pip install --upgrade hermes-nexus-memory
 ```
