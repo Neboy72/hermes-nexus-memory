@@ -158,6 +158,8 @@ class EdgeStore:
         point_id: str,
     ) -> dict | None:
         """Retrieve a single point by its ID (UUID string)."""
+        from qdrant_client import models
+
         points, _ = self.client.scroll(
             collection_name=self._collection,
             limit=1,
