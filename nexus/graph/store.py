@@ -86,6 +86,8 @@ class EdgeStore:
 
     @property
     def client(self) -> QdrantClient:
+4from qdrant_client import QdrantClient, models
+
         if self._client is None:
             self._client = QdrantClient(url=self._qdrant_url)
         return self._client
@@ -152,6 +154,8 @@ class EdgeStore:
         )
 
     def _scroll_point(
+4from qdrant_client import models
+
         self,
         point_id: str,
     ) -> dict | None:
@@ -414,6 +418,8 @@ class EdgeStore:
         return results
 
     def _find_incoming_edges(
+4from qdrant_client import QdrantClient, models
+
         self,
         target_fact_id: str,
         relation: str | None = None,
