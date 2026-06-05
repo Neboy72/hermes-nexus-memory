@@ -106,10 +106,15 @@ Or manually:
 pip install --upgrade hermes-nexus-memory
 ```
 
-# 2. Restart your Hermes gateway (if used as plugin)
-hermes gateway restart
+Then restart your Hermes gateway:
 
-# 3. Run the migration (if v1.x → v2.x)
+```bash
+hermes gateway restart
+```
+
+If upgrading from v1.x → v2.x, also run the migration:
+
+```bash
 nexus-migrate
 ```
 
@@ -154,8 +159,8 @@ Your agent checks prerequisites, installs everything, configures the provider, a
 ## Requirements
 
 - **Python 3.11+**
-- **Qdrant v1.17+** (Docker: `docker run -d --name qdrant -p 6333:6333 qdrant/qdrant:v1.17`)
-- **Optional:** `pip install bm25s` for hybrid retrieval (recommended)
+- **Qdrant v1.17+** (started automatically by `setup.sh` — `brew install qdrant` on macOS)
+- `pip install bm25s` for hybrid retrieval (recommended — auto-detected)
 
 ---
 
@@ -198,7 +203,7 @@ Pick one — same API, different tradeoffs:
 
 ## Related Projects
 
-- **[OpenClaw Nexus Memory](https://github.com/Neboy72/openclaw-nexus-memory)** — Nexus Memory for OpenClaw agents (SQLite-backed, no database required)
+- **[OpenClaw Nexus Memory](https://github.com/Neboy72/openclaw-nexus-memory)** — Nexus Memory for OpenClaw agents — same Qdrant-powered hybrid memory stack
 
 ---
 
