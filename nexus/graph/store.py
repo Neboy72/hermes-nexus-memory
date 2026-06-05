@@ -32,6 +32,8 @@ from nexus.graph.schema import (
     EDGES_PAYLOAD_KEY,
 )
 
+from qdrant_client import QdrantClient, models
+
 _logger = logging.getLogger(__name__)
 
 from nexus.config import get_collection
@@ -158,7 +160,6 @@ class EdgeStore:
         point_id: str,
     ) -> dict | None:
         """Retrieve a single point by its ID (UUID string)."""
-        from qdrant_client import models
 
         points, _ = self.client.scroll(
             collection_name=self._collection,
@@ -203,7 +204,6 @@ class EdgeStore:
             DuplicateEdgeError: If a duplicate active edge already exists.
             EdgeStoreError: If the source point does not exist.
         """
-        from qdrant_client import models
 
         self._validate_relation(relation)
 
