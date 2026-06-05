@@ -7,32 +7,40 @@ on:
     branches: [main]
 
 jobs:
-  install-test:
+  base-install:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
       - name: Install base package
         run: |
           pip install --upgrade pip
           pip install -e .
-
+      - name: Core import test
+        run: python3 -c "import nexus; print('✅ Core import OK')"
       - name: CLI smoke test
         run: |
-          nexus-export --help 2>&1 || nexus-discover --help 2>&1 || echo "CLI smoke test done"
+          nexus-export --help 2>&1 || nexus-discovery --help 2>&1 || echo "CLI smoke test done"
 
-      - name: Core import test
-        run: python3 -c "import nexus; print('Core import OK')"
-
+  full-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install with all extras
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[all]"
       - name: Run tests
         run: |
           pip install pytest
