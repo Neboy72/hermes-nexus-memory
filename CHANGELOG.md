@@ -1,5 +1,35 @@
 # Changelog
 
+## [2.7.1] — 2026-06-06
+
+### Added
+
+- **Event-API** (`nexus/events.py`) — 6 Event-Typen: `belief_created`, `belief_updated`, `trust_changed`, `status_changed`, `belief_split`, `user_override`
+  - `create_event()` — Event speichern + UUID generieren
+  - `get_events(belief_id)` — Chronologische History pro Belief
+  - `get_events_since(timestamp)` — Events seit Zeitpunkt
+  - Volle Audit-Trail-Rückverfolgbarkeit
+- **Apply-API** (`nexus/apply.py`) — Belief-Operationen mit Event-Erzeugung
+  - `resolve_belief()` — Suchen oder neu anlegen
+  - `apply_delta()` — Änderungen anwenden + Event
+  - `user_override()` — Explizit setzen (immun gegen Recompute)
+  - `recompute_trust()` — Trust aus max(evidence.trust_contribution)
+  - `recompute_all()` — Full-Scan aller Beliefs
+- **Override-Schutz**: `explicitly_set=True` → Recompute überspringt diesen Belief
+- **Unified CLI** (`nexus/cli.py`):
+  - `nexus resolve <fact>` — Belief suchen/erstellen
+  - `nexus events <belief-id>` — Event-History
+  - `nexus events --since <iso>` — Events seit Zeitpunkt
+  - `nexus ingest <file>` — Batch-Beliefs aus JSON
+  - `nexus scan` — Full-Scan + Trust-Recompute
+  - `nexus override <belief-id> <field> <val>` — User-Override
+  - `nexus verify` — Collection-Status prüfen
+
+### Migration
+
+- 4.968 Beliefs in `nexus_beliefs`, 5.000+ Events in `nexus_events`
+- Beide Collections: 1024d Cosine, Payload-Indizes aktiv
+
 ## [2.7.0] — 2026-06-06
 
 ### Added
