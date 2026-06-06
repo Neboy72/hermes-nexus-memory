@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.7.0] — 2026-06-06
+
+### Added
+
+- **Belief as First-Class Entity** — neues Datenmodell mit zwei Collections:
+  - `nexus_beliefs` (1024d Cosine) — Beliefs mit Status, Trust, Evidence-Array, Bi-Temporal, Provenance-Trail
+  - `nexus_events` (payload-only) — Append-only Event-Log für Audit-Trail
+- **Status-Enum**: ACTIVE → CONTESTED (Agent) → ACTIVE (User) | RETRACTED | SUPERSEDED → HISTORICAL
+- **Trust-Aggregation**: `max()` über alle `evidence.trust_contribution`
+- **`scripts/trust_recompute.py`** — Trust-Recompute Service (Full-Scan, Single-Belief, Governance-Check)
+- **`scripts/nexus_api.py`** — API-Client für Phase 2/5/6:
+  - `ingest` — Ingestion Pipeline: Fakt aufnehmen → Belief + Event anlegen
+  - `event create` — assertion_event-API (contest/confirm/override/retract)
+  - `resolve --chain` — nexus_resolve Query-API mit Provenance-Chain
+- **Agent-Governance**: Agent kann nur `contest` (→ CONTESTED), User muss `confirm` (→ ACTIVE)
+- **Bi-temporal Pflicht**: `event_time` + `ingested_at` bei jedem Event
+
+### Migration
+
+- 4.951 Legacy-Points aus `hermes-memory` nach `nexus_beliefs`/`nexus_events` überführt (trust=0.3, `legacy` markiert)
+- 11 Config-Facts aus `beliefs.yaml` migriert (trust=0.8)
+- Keine Duplikate (1.000er Stichprobe, 1.000 unique)
+- 12 Payload-Indizes (6 pro Collection, inkl. valid_since/valid_until/event_id)
+
 ## [2.6.1] — 2026-06-03
 
 ### Changed

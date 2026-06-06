@@ -22,8 +22,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-# Lazy import — qdrant-client is optional ([all] extra)
-# Imported locally in __init__ and methods that need it
+from qdrant_client import QdrantClient, models
 
 from nexus.graph.schema import (
     Edge,
@@ -31,8 +30,6 @@ from nexus.graph.schema import (
     EdgeStatus,
     EDGES_PAYLOAD_KEY,
 )
-
-from qdrant_client import QdrantClient, models
 
 _logger = logging.getLogger(__name__)
 
@@ -73,7 +70,6 @@ class EdgeStore:
     """
 
     def __init__(
-
         self,
         qdrant_url: str | None = None,
         collection: str | None = None,
@@ -88,7 +84,6 @@ class EdgeStore:
 
     @property
     def client(self) -> QdrantClient:
-
         if self._client is None:
             self._client = QdrantClient(url=self._qdrant_url)
         return self._client
@@ -155,12 +150,10 @@ class EdgeStore:
         )
 
     def _scroll_point(
-
         self,
         point_id: str,
     ) -> dict | None:
         """Retrieve a single point by its ID (UUID string)."""
-
         points, _ = self.client.scroll(
             collection_name=self._collection,
             limit=1,
@@ -204,7 +197,6 @@ class EdgeStore:
             DuplicateEdgeError: If a duplicate active edge already exists.
             EdgeStoreError: If the source point does not exist.
         """
-
         self._validate_relation(relation)
 
         # Check source point exists
@@ -420,7 +412,6 @@ class EdgeStore:
         return results
 
     def _find_incoming_edges(
-
         self,
         target_fact_id: str,
         relation: str | None = None,
