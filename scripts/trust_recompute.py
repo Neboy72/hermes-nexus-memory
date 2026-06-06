@@ -13,7 +13,7 @@ Usage:
   # Full-Scan aller Beliefs
   python3 trust_recompute.py --all
 
-  # Dry-Run (nur anzeigen, nichts schreiben)
+  # Dry-run (display only, no writes)
   python3 trust_recompute.py --all --dry-run
 
   # Nur CONTESTED-Beliefs prüfen (User-Governance)
@@ -349,7 +349,7 @@ def main():
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Nur anzeigen, nichts schreiben",
+        help="Display only, do not write",
     )
     parser.add_argument(
         "--status",

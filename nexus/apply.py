@@ -1,11 +1,11 @@
 """Nexus Memory — Apply-API + Trust-Recompute (v2.7)
 
 Belief-Operationen:
-  - resolve:     Belief suchen oder neu anlegen
-  - apply:       Änderungen anwenden + Event erzeugen
-  - override:    User setzt expliziten Wert (immun gegen Recompute)
-  - recompute:   Trust aus Evidence neu berechnen
-"""
+  - resolve:     Find or create a belief
+  - apply:       Apply delta with automatic event creation
+  - override:    User sets explicit value (immune to recompute)
+  - recompute:   Recompute trust from evidence
+  - govern:      Agent contests, user confirms
 
 import json
 import logging
@@ -38,7 +38,7 @@ VALID_STATUSES = {STATUS_ACTIVE, STATUS_CONTESTED, STATUS_RETRACTED, STATUS_SUPE
 # --- Collection Management ---
 
 def ensure_beliefs_collection() -> bool:
-    """Legt nexus_beliefs an falls nicht vorhanden (mit Payload-Schema)."""
+    """Creates nexus_beliefs if not exists (with payload schema)."""
     r = requests.get(f"{QDRANT_URL}/collections/{BELIEFS_COLLECTION}", timeout=10)
     if r.status_code == 200:
         return True
@@ -76,7 +76,7 @@ def resolve_belief(
     trust: float = 0.5,
     status: str = STATUS_ACTIVE,
 ) -> dict:
-    """Sucht Belief per fact-String oder legt neu an.
+    """Finds belief by fact string or creates a new one.
 
     Returns:
         dict mit {belief_id, status, created}
@@ -132,15 +132,14 @@ def resolve_belief(
 
 
 def apply_delta(belief_id: str, delta: dict) -> dict:
-    """Wendet Änderungen auf einen Belief an + erzeugt Event.
+    """Applies changes to a belief and creates an event.
 
-    delta kann enthalten: fact, status, trust, source, rationale
-    Respektiert explicitly_set=True — diese Felder werden nicht überschrieben.
-    """
+    delta can contain: fact, status, trust, source, rationale
+    Respects explicitly_set=True — those fields are not overwritten."""
     # Belief laden
     belief = _get_belief(belief_id)
     if not belief:
-        return {"error": True, "message": f"Belief {belief_id[:8]} nicht gefunden"}
+        return {"error": True, "message": f"Belief {belief_id[:8]} not found"}
 
     payload = belief["payload"]
     changed = {}
@@ -193,10 +192,10 @@ def apply_delta(belief_id: str, delta: dict) -> dict:
 
 
 def user_override(belief_id: str, field: str, value: Any) -> dict:
-    """User setzt explizit einen Wert — immun gegen Recompute."""
+    """User explicitly sets a value — immune to recompute."""
     belief = _get_belief(belief_id)
     if not belief:
-        return {"error": True, "message": "Belief nicht gefunden"}
+        return {"error": True, "message": "Belief not found"}
 
     payload = belief["payload"]
     old_value = payload.get(field)
@@ -230,13 +229,14 @@ def user_override(belief_id: str, field: str, value: Any) -> dict:
 # --- Trust-Recompute ---
 
 def recompute_trust(belief_id: str) -> dict:
-    """Berechnet Trust aus evidence.trust_contribution (max-Aggregation).
+    """Recomputes trust from evidence.trust_contribution (max-aggregation).
 
-    Respektiert explicit_set=True — wird nicht überschrieben.
+    Respects explicitly_set=True — does not overwrite locked fields.
     """
     belief = _get_belief(belief_id)
+    # TODO: Pagination for >100 beliefs
     if not belief:
-        return {"error": True, "message": "Belief nicht gefunden"}
+        return {"error": True, "message": "Belief not found"}
 
     payload = belief["payload"]
 
@@ -283,14 +283,14 @@ def recompute_trust(belief_id: str) -> dict:
 
 
 def recompute_all() -> dict:
-    """Full-Scan: Trust für ALLE Beliefs neu berechnen.
+    """Full-scan: recomputes trust for ALL beliefs.
 
     Returns:
         dict mit total, changed, skipped, overrides
     """
     stats = {"total": 0, "changed": 0, "skipped": 0, "overrides": 0, "errors": 0}
     limit = 100
-    offset = None  # Qdrant verwendet next_page_offset (Cursor), keinen Integer-Offset
+    offset = None  # Qdrant uses next_page_offset (cursor-based), not integer offset
 
     while True:
         scroll_params = {"limit": limit, "with_payload": True}
@@ -363,7 +363,7 @@ def _find_by_fact(fact: str) -> Optional[dict]:
 
 
 def _get_belief(belief_id: str) -> Optional[dict]:
-    """Lädt einen kompletten Point aus nexus_beliefs."""
+    """Loads a full point from nexus_beliefs."""
     r = requests.post(
         f"{QDRANT_URL}/collections/{BELIEFS_COLLECTION}/points/scroll",
         json={

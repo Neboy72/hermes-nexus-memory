@@ -1,15 +1,15 @@
 """Nexus Memory — Event-API (v2.7)
 
-Bi-temporales Event-System für Belief-Änderungen.
-Jede Änderung erzeugt ein Event — volle Audit-Trail-Rückverfolgbarkeit.
+Bi-temporal event system for belief changes.
+Every change generates an event — full audit trail traceability.
 
-6 Event-Typen:
-  - belief_created:  initiale Erstellung eines Beliefs
-  - belief_updated:  Felder geändert (fact, source, rationale)
-  - trust_changed:   Trust-Score neu berechnet
-  - status_changed:  Status gewechselt (ACTIVE→CONTESTED etc.)
-  - belief_split:    Belief in zwei geteilt (neue ID)
-  - user_override:   User hat explizit einen Wert gesetzt (immun gegen Recompute)
+6 event types:
+  - belief_created:  initial creation of a belief
+  - belief_updated:  fields changed (fact, source, rationale)
+  - trust_changed:   trust score recomputed
+  - status_changed:  status changed (ACTIVE→CONTESTED etc.)
+  - belief_split:    belief split into two (new ID)
+  - user_override:   user explicitly set a value (immune to recompute)
 """
 
 import json
@@ -51,12 +51,12 @@ class EventType(str, Enum):
 # --- Collection Management ---
 
 def ensure_collection() -> bool:
-    """Legt nexus_events an falls nicht vorhanden (Indizes separat)."""
+    """Creates nexus_events if not exists (indexes created separately later)."""
     r = requests.get(f"{QDRANT_URL}/collections/{COLLECTION}", timeout=10)
     if r.status_code == 200:
         return True
 
-    # Collection ohne Indizes anlegen (Qdrant ignoriert payload_schema im PUT)
+    # Create collection without indexes first (Qdrant ignores payload_schema in PUT body)
     payload = {
         "name": COLLECTION,
         "vectors": {
@@ -88,7 +88,7 @@ def ensure_collection() -> bool:
             timeout=10,
         )
         if resp.status_code not in (200, 201):
-            log.warning(f"⚠️ Index '{field}' nicht erstellt: {resp.status_code}")
+            log.warning(f"⚠️ Index '{field}' not created: {resp.status_code}")
 
     log.info(f"✅ Collection '{COLLECTION}' angelegt (1024d Cosine, {len(indices)} Indizes)")
     return True
@@ -120,7 +120,7 @@ def create_event(
 
     point = {
         "id": event_id,
-        "vector": [0.0] * VECTOR_SIZE,  # Zero-Vector — Events haben keine Semantik
+        "vector": [0.0] * VECTOR_SIZE,  # Zero-Vector — events have no semantic meaning
         "payload": {
             "event_id": event_id,
             "event_type": event_type,
@@ -144,7 +144,7 @@ def create_event(
 
 
 def _parse_event(p: dict) -> dict:
-    """Extrahiert Event-Daten aus einem Qdrant-Point."""
+    """Extracts event data from a Qdrant point."""
     pl = p["payload"]
     delta = {}
     raw = pl.get("delta", "{}")
@@ -171,7 +171,7 @@ def get_events(
     belief_id: str,
     limit: int = 50,
 ) -> list[dict]:
-    """Holt alle Events zu einem Belief (chronologisch)."""
+    """Fetches all events for a belief (chronological order)."""
     r = requests.post(
         f"{QDRANT_URL}/collections/{COLLECTION}/points/scroll",
         json={
@@ -197,7 +197,7 @@ def get_events_since(
     event_type: Optional[str] = None,
     limit: int = 200,
 ) -> list[dict]:
-    """Holt alle Events seit einem Zeitpunkt (optional gefiltert nach Typ)."""
+    """Fetches all events since a given timestamp (optionally filtered by type)."""
     filters = [{"key": "ingested_at", "range": {"gte": since}}]
     if event_type:
         filters.append({"key": "event_type", "match": {"value": event_type}})

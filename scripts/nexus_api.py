@@ -210,7 +210,7 @@ def apply_event_to_belief(event: dict, dry_run: bool = False) -> Optional[dict]:
         print(f"  → {belief_id}: RETRACTED")
 
     else:
-        print(f"  ~ {belief_id}: keine Status-Änderung (assertion={assertion}, actor={actor_type})")
+        print(f"  ~ {belief_id}: no status change (assertion={assertion}, actor={actor_type})")
         return None
 
     new_payload["temporal"] = dict(bpayload.get("temporal", {}))
@@ -245,7 +245,7 @@ def resolve_belief(belief_id: str, show_chain: bool = False) -> dict:
     """
     bp = get_belief(belief_id)
     if not bp:
-        return {"error": f"Belief '{belief_id}' nicht gefunden."}
+        return {"error": f"Belief '{belief_id}' not found."}
 
     bpayload = bp.get("payload", {})
     events = get_events_for_belief(belief_id)
@@ -289,7 +289,7 @@ def resolve_belief(belief_id: str, show_chain: bool = False) -> dict:
 # Phase 2: Ingestion Pipeline
 # ═══════════════════════════════════════════════════════════════════════
 def slugify(text: str) -> str:
-    """Erzeuge einen URL-sicheren Slug aus Text."""
+    """Generates a URL-safe slug from text."""
     import re
     s = text.lower().strip()
     s = re.sub(r'[^a-z0-9\s-]', '', s)
@@ -310,12 +310,12 @@ def ingest_fact(
 ) -> dict:
     """
     Ingestion Pipeline (Phase 2):
-    Nimmt einen Fakt auf, legt Belief + Event an, triggert Trust-Recompute.
+    Ingests a fact: creates belief + event, triggers trust recompute.
 
-    1. Belief-ID generieren oder existierende prüfen
-    2. Belief in nexus_beliefs anlegen/updaten (content, trust, rationale, temporal)
-    3. Assertion-Event in nexus_events schreiben
-    4. Trust wird über max(events.trust_level) gesteuert
+    1. Generate belief ID or check existing
+    2. Create/update belief in nexus_beliefs (content, trust, rationale, temporal)
+    3. Write assertion event in nexus_events
+    4. Trust is managed via max(events.trust_level)
 
     Returns: {"belief_id": str, "event_id": str, "status": str}
     """
@@ -368,8 +368,8 @@ def ingest_fact(
                 {"payload": new_payload, "points": [ep_id]},
             )
             if response.get("status") != "ok":
-                return {"error": f"Belief-Update fehlgeschlagen: {response}"}
-            print(f"  🔄 Belief existiert — trust={max_trust}")
+                return {"error": f"Belief update failed: {response}"}
+            print(f"  🔄 Belief exists — trust={max_trust}")
     else:
         # Neues Belief anlegen
         belief_point_id = next_point_id("nexus_beliefs")

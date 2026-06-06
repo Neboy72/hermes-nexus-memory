@@ -73,30 +73,30 @@ That's it. Hybrid search activates automatically when `bm25s` is installed.
 
 | Feature | What it does | Why it matters |
 |---------|-------------|---------------|
-| 🏛️ **Belief + Event Model** | Zwei Collections: `nexus_beliefs` (1024d) + `nexus_events` (payload-only). Beliefs haben Status, Trust, Evidence-Array, Bi-Temporal, Provenance-Trail. | **Jeder Fakt ist nachvollziehbar.** Wer hat wann was geglaubt? Warum? Welche Evidenz? Alles im Audit-Trail. |
-| 🚦 **Status-Enum** | ACTIVE → CONTESTED (Agent) → ACTIVE (User confirm) \| RETRACTED \| SUPERSEDED | **Kein stummer Drift.** Agent contestiert, User entscheidet. Niemand überschreibt unbemerkt. |
-| 📐 **Trust-Aggregation** | `max()` über alle `evidence.trust_contribution` | **Höchste Evidenz gewinnt.** Neue Quellen erhöhen Trust automatisch — kein manuelles Nachjustieren. |
-| 🧪 **scripts/trust_recompute.py** | Full-Scan, Single-Belief, Governance-Check | **Trust ist kein statischer Wert.** Jederzeit neu berechenbar — als Pipeline oder manuell. |
-| 🔌 **scripts/nexus_api.py** | `ingest` (Fakt aufnehmen), `event create` (contest/confirm/override/retract), `resolve --chain` (Provenance-Chain) | **Ein CLI für alles.** Fakt reinschreiben, Status ändern, Audit anzeigen — ohne Code. |
-|| 👤 **Agent-Governance** | Agent → nur `contest` (CONTESTED). User → `confirm`/`override` (ACTIVE + trust=1.0) | **Der Mensch entscheidet, nicht die Maschine.** Agenten widersprechen, Menschen bestätigen. |
+| 🏛️ **Belief + Event Model** | Two collections: `nexus_beliefs` (1024d) + `nexus_events` (payload-only). Beliefs have status, trust, evidence-array, bi-temporal, provenance-trail. | **Every fact is traceable.** Who believed what, when, and why? Which evidence supports it? Full audit trail. |
+| 🚦 **Status-Enum** | ACTIVE → CONTESTED (Agent) → ACTIVE (User confirm) \| RETRACTED \| SUPERSEDED | **No silent drift.** Agent contests, user confirms. Nobody overwrites unnoticed. |
+| 📐 **Trust-Aggregation** | `max()` across all `evidence.trust_contribution` | **Highest evidence wins.** New sources raise trust automatically — no manual tuning. |
+| 🧪 **scripts/trust_recompute.py** | Full-Scan, Single-Belief, Governance-Check | **Trust is not static.** Recomputable anytime — as pipeline or on-demand. |
+| 🔌 **scripts/nexus_api.py** | `ingest` (add fact), `event create` (contest/confirm/override/retract), `resolve --chain` (Provenance-Chain) | **One CLI for everything.** Add facts, change status, view audit — without writing code. |
+| 👤 **Agent-Governance** | Agent → only `contest` (CONTESTED). User → `confirm`/`override` (ACTIVE + trust=1.0) | **Human decides, not the machine.** Agents disagree, humans confirm. |
 
 ### v2.7.1 — Event-API + Apply-API + Unified CLI 🎛️
 
 | Feature | What it does | Why it matters |
 |---------|-------------|---------------|
-| 🎛️ **Unified CLI** | `nexus resolve`, `events`, `ingest`, `scan`, `override`, `verify` | **Memory verwalten ohne Code.** Ein Befehl — Belief anlegen, History anzeigen, Trust neu berechnen. |
-| 📜 **Event-API** | 6 Event-Typen: created, updated, trust_changed, status_changed, split, user_override | **Jede Änderung ist nachvollziehbar.** Volle Audit-Trail-Rückverfolgbarkeit von der Erstellung bis heute. |
-| 🔧 **Apply-API** | `resolve_belief()`, `apply_delta()`, `user_override()` | **Beliefs programmatisch verwalten.** Mit automatischer Event-Erzeugung bei jeder Änderung. |
-| 🔒 **Override-Schutz** | `explicitly_set=True` → Recompute überspringt diesen Belief | **Deine Änderungen bleiben.** Kein automatischer Recompute macht deine Entscheidung rückgängig. |
+| 🎛️ **Unified CLI** | `nexus resolve`, `events`, `ingest`, `scan`, `override`, `verify` | **Manage memory without code.** One command — create belief, show history, recompute trust. |
+| 📜 **Event-API** | 6 event types: created, updated, trust_changed, status_changed, split, user_override | **Every change is traceable.** Full audit trail from creation to today. |
+| 🔧 **Apply-API** | `resolve_belief()`, `apply_delta()`, `user_override()` | **Programmatic belief management.** Automatic event generation on every change. |
+| 🔒 **Override Protection** | `explicitly_set=True` → Recompute skips this belief | **Your changes stay.** No automatic recompute reverts your decisions. |
 
 ### v2.7.2 — Bugfix: Pagination, Index-API, Fact-Match 🐛
 
-| Fix | Problem | Lösung |
-|-----|---------|--------|
-| 🔴 Pagination | `offset += limit` crashte bei UUID-basierten IDs | Cursor-basiert via `next_page_offset` |
-| 🔴 Fact-Match | `fact[:100]` schnitt lange Fakten ab | Voller Fakt-String für Exact-Match |
-| 🔴 Index-API | `payload_indices` im PUT wurden ignoriert | Indizes separat via `PUT /collections/{name}/index` |
-| 🟡 QDRANT_URL | Hartcodiert auf localhost:6333 | Konfigurierbar via Env-Variable |
+| Fix | Problem | Solution |
+|-----|---------|----------|
+| 🔴 Pagination | `offset += limit` crashed with UUID-based IDs | Cursor-based via `next_page_offset` |
+| 🔴 Fact-Match | `fact[:100]` truncated long facts | Full fact string for exact match |
+| 🔴 Index-API | `payload_indices` were ignored in PUT body | Indexes created separately via `PUT /collections/{name}/index` |
+| 🟡 QDRANT_URL | Hardcoded to localhost:6333 | Configurable via environment variable |
 
 ### v2.1.0 — Auto-Discovery + Graph Analytics 🔄
 

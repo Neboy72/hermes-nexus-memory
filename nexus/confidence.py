@@ -363,7 +363,7 @@ class GroundingScorer:
         if not chunk_scores or sum(chunk_scores) == 0:
             return 0.0
         ratio = chunk_scores[0] / sum(chunk_scores)
-        # Square root, damit moderate Dominanz nicht zu hart bestraft wird
+        # Square root — prevents moderate dominance from being penalised too harshly
         return math.sqrt(ratio)
 
     # Technical named entities for the factual signal
@@ -417,7 +417,7 @@ class GroundingScorer:
         score = matched / len(ans_entities)
 
         # Bonus: Wenn alle Entities matched → 1.0
-        # Wenn keine → 0.0, dazwischen linear
+        # If none → 0.0, otherwise linear interpolation
         return round(min(score, 1.0), 4)
 
     @staticmethod

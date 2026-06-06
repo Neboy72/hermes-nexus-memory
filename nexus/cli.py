@@ -102,7 +102,7 @@ def cmd_events(args):
         events = get_events(args.belief_id)
         print(f"📋 {len(events)} Events für Belief {args.belief_id[:12]}...")
     else:
-        print("❌ Bitte belief_id oder --since angeben")
+        print("❌ Please specify belief_id or --since")
         sys.exit(1)
 
     for e in events:
@@ -115,7 +115,7 @@ def cmd_ingest(args):
     from nexus.apply import resolve_belief
 
     if not os.path.exists(args.file):
-        print(f"❌ Datei nicht gefunden: {args.file}")
+        print(f"❌ File not found: {args.file}")
         sys.exit(1)
 
     with open(args.file) as f:
@@ -157,7 +157,7 @@ def cmd_scan(args):
     print(f"\n📊 Ergebnis:")
     print(f"  Gesamt:  {stats['total']}")
     print(f"  Geändert: {stats['changed']}")
-    print(f"  Übersprungen: {stats['skipped']} (davon {stats['overrides']} Overrides)")
+    print(f"  Skipped: {stats['skipped']} (including {stats['overrides']} overrides)")
     if stats['errors']:
         print(f"  ⚠️ Fehler: {stats['errors']}")
 
@@ -206,11 +206,11 @@ def cmd_verify():
         print(f"  Points:  {d['points_count']}")
         print(f"  Vector:  {d['config']['params']['vectors']['size']}d")
     else:
-        print(f"\n📦 nexus_beliefs (❌): nicht vorhanden")
+        print(f"\n📦 nexus_beliefs (❌): not found")
 
 
 def _ensure_path():
-    """Stellt sicher dass nexus-Module importierbar sind."""
+    """Ensures nexus modules are importable."""
     repo_paths = [
         os.path.expanduser("~/hermes-nexus-memory"),
         os.path.expanduser("~/.hermes/hermes-nexus-memory"),
@@ -221,7 +221,7 @@ def _ensure_path():
             if p not in sys.path:
                 sys.path.insert(0, p)
             return
-    print("❌ Nexus Memory Repo nicht gefunden")
+    print("❌ Nexus Memory repo not found")
     sys.exit(1)
 
 

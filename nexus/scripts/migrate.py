@@ -1,8 +1,8 @@
 """
 Migration: SQLite skillgraph.db → Qdrant Payload Edges.
 
-Liest bestehende Edges aus einer v2.0.x SQLite-Datenbank (skillgraph.db)
-und schreibt sie als `edges`-Array in die Qdrant-Point-Payloads.
+Reads existing edges from a v2.0.x SQLite database (skillgraph.db)
+and writes them as `edges` arrays into Qdrant point payloads.
 
 Usage:
     python3 -m nexus.scripts.migrate \\
@@ -158,8 +158,8 @@ def main():
     parser.add_argument("--db", required=True, help="Path to skillgraph.db")
     parser.add_argument("--collection", required=True, help="Qdrant collection name")
     parser.add_argument("--qdrant-url", default="http://localhost:6333", help="Qdrant HTTP URL")
-    parser.add_argument("--dry-run", action="store_true", help="Nur lesen, nicht schreiben")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Logging einschalten")
+    parser.add_argument("--dry-run", action="store_true", help="Read only, do not write")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable logging")
     
     args = parser.parse_args()
     
