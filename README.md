@@ -13,7 +13,7 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 [![License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
-[![Version](https://img.shields.io/badge/version-2.7.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
+[![Version](https://img.shields.io/badge/version-2.7.2-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
 > **Bot Self-Install:** Tell your AI: *"Read AGENTS.md and install Nexus Memory."* It does the rest.
 
@@ -78,7 +78,25 @@ That's it. Hybrid search activates automatically when `bm25s` is installed.
 | 📐 **Trust-Aggregation** | `max()` über alle `evidence.trust_contribution` | **Höchste Evidenz gewinnt.** Neue Quellen erhöhen Trust automatisch — kein manuelles Nachjustieren. |
 | 🧪 **scripts/trust_recompute.py** | Full-Scan, Single-Belief, Governance-Check | **Trust ist kein statischer Wert.** Jederzeit neu berechenbar — als Pipeline oder manuell. |
 | 🔌 **scripts/nexus_api.py** | `ingest` (Fakt aufnehmen), `event create` (contest/confirm/override/retract), `resolve --chain` (Provenance-Chain) | **Ein CLI für alles.** Fakt reinschreiben, Status ändern, Audit anzeigen — ohne Code. |
-| 👤 **Agent-Governance** | Agent → nur `contest` (CONTESTED). User → `confirm`/`override` (ACTIVE + trust=1.0) | **Der Mensch entscheidet, nicht die Maschine.** Agenten widersprechen, Menschen bestätigen. |
+|| 👤 **Agent-Governance** | Agent → nur `contest` (CONTESTED). User → `confirm`/`override` (ACTIVE + trust=1.0) | **Der Mensch entscheidet, nicht die Maschine.** Agenten widersprechen, Menschen bestätigen. |
+
+### v2.7.1 — Event-API + Apply-API + Unified CLI 🎛️
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 🎛️ **Unified CLI** | `nexus resolve`, `events`, `ingest`, `scan`, `override`, `verify` | **Memory verwalten ohne Code.** Ein Befehl — Belief anlegen, History anzeigen, Trust neu berechnen. |
+| 📜 **Event-API** | 6 Event-Typen: created, updated, trust_changed, status_changed, split, user_override | **Jede Änderung ist nachvollziehbar.** Volle Audit-Trail-Rückverfolgbarkeit von der Erstellung bis heute. |
+| 🔧 **Apply-API** | `resolve_belief()`, `apply_delta()`, `user_override()` | **Beliefs programmatisch verwalten.** Mit automatischer Event-Erzeugung bei jeder Änderung. |
+| 🔒 **Override-Schutz** | `explicitly_set=True` → Recompute überspringt diesen Belief | **Deine Änderungen bleiben.** Kein automatischer Recompute macht deine Entscheidung rückgängig. |
+
+### v2.7.2 — Bugfix: Pagination, Index-API, Fact-Match 🐛
+
+| Fix | Problem | Lösung |
+|-----|---------|--------|
+| 🔴 Pagination | `offset += limit` crashte bei UUID-basierten IDs | Cursor-basiert via `next_page_offset` |
+| 🔴 Fact-Match | `fact[:100]` schnitt lange Fakten ab | Voller Fakt-String für Exact-Match |
+| 🔴 Index-API | `payload_indices` im PUT wurden ignoriert | Indizes separat via `PUT /collections/{name}/index` |
+| 🟡 QDRANT_URL | Hartcodiert auf localhost:6333 | Konfigurierbar via Env-Variable |
 
 ### v2.1.0 — Auto-Discovery + Graph Analytics 🔄
 
