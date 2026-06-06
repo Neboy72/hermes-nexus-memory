@@ -9,6 +9,7 @@ Belief-Operationen:
 
 import json
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -22,7 +23,7 @@ log = logging.getLogger("nexus.apply")
 # --- Constants ---
 BELIEFS_COLLECTION = "nexus_beliefs"
 EVENTS_COLLECTION = "nexus_events"
-QDRANT_URL = "http://localhost:6333"
+QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
 
 # Status-Enum als Konstanten
 STATUS_ACTIVE = "ACTIVE"
@@ -288,18 +289,26 @@ def recompute_all() -> dict:
         dict mit total, changed, skipped, overrides
     """
     stats = {"total": 0, "changed": 0, "skipped": 0, "overrides": 0, "errors": 0}
-    offset = 0
     limit = 100
+    offset = None  # Qdrant verwendet next_page_offset (Cursor), keinen Integer-Offset
 
     while True:
+        scroll_params = {"limit": limit, "with_payload": True}
+        if offset is not None:
+            scroll_params["offset"] = offset
+
         r = requests.post(
             f"{QDRANT_URL}/collections/{BELIEFS_COLLECTION}/points/scroll",
-            json={"limit": limit, "offset": offset, "with_payload": True},
+            json=scroll_params,
             timeout=30,
         )
         if r.status_code != 200:
+            log.error(f"❌ Scroll fehlgeschlagen: {r.status_code}")
+            stats["errors"] += 1
             break
-        points = r.json()["result"]["points"]
+
+        result = r.json()["result"]
+        points = result.get("points", [])
         if not points:
             break
 
@@ -316,7 +325,9 @@ def recompute_all() -> dict:
             elif result.get("changed"):
                 stats["changed"] += 1
 
-        offset += limit
+        offset = result.get("next_page_offset")
+        if offset is None:
+            break
 
     log.info(f"📊 Recompute-Scan abgeschlossen: {stats}")
     return stats
@@ -332,7 +343,7 @@ def _find_by_fact(fact: str) -> Optional[dict]:
             "limit": 5,
             "with_payload": True,
             "filter": {
-                "must": [{"key": "content", "match": {"value": fact[:100]}}],
+                "must": [{"key": "content", "match": {"value": fact}}],
             },
         },
         timeout=10,

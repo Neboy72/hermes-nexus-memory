@@ -14,6 +14,7 @@ Jede Änderung erzeugt ein Event — volle Audit-Trail-Rückverfolgbarkeit.
 
 import json
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
@@ -25,7 +26,7 @@ log = logging.getLogger("nexus.events")
 
 # --- Constants ---
 COLLECTION = "nexus_events"
-QDRANT_URL = "http://localhost:6333"
+QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
 VECTOR_SIZE = 1024  # 1024d Cosine — matches nexus_beliefs
 
 EVENT_TYPES = [
@@ -50,39 +51,47 @@ class EventType(str, Enum):
 # --- Collection Management ---
 
 def ensure_collection() -> bool:
-    """Legt nexus_events an falls nicht vorhanden."""
+    """Legt nexus_events an falls nicht vorhanden (Indizes separat)."""
     r = requests.get(f"{QDRANT_URL}/collections/{COLLECTION}", timeout=10)
     if r.status_code == 200:
         return True
 
+    # Collection ohne Indizes anlegen (Qdrant ignoriert payload_schema im PUT)
     payload = {
         "name": COLLECTION,
         "vectors": {
             "size": VECTOR_SIZE,
             "distance": "Cosine",
         },
-        "payload_schema": {
-            "event_id": {"type": "keyword"},
-            "event_type": {"type": "keyword"},
-            "belief_id": {"type": "keyword"},
-            "status": {"type": "keyword"},
-            "ingested_at": {"type": "datetime"},
-            "event_time": {"type": "datetime"},
-        },
-        "payload_indices": [
-            {"field_name": "event_id", "type": "keyword"},
-            {"field_name": "event_type", "type": "keyword"},
-            {"field_name": "belief_id", "type": "keyword"},
-            {"field_name": "status", "type": "keyword"},
-            {"field_name": "ingested_at", "type": "datetime"},
-        ],
     }
     r = requests.put(f"{QDRANT_URL}/collections/{COLLECTION}", json=payload, timeout=10)
-    if r.status_code == 200:
-        log.info(f"✅ Collection '{COLLECTION}' angelegt (1024d Cosine)")
-        return True
-    log.error(f"❌ Collection-Anlage fehlgeschlagen: {r.status_code} {r.text[:200]}")
-    return False
+    if r.status_code != 200:
+        log.error(f"❌ Collection-Anlage fehlgeschlagen: {r.status_code} {r.text[:200]}")
+        return False
+
+    # Indizes separat anlegen
+    indices = [
+        ("event_id", "keyword"),
+        ("event_type", "keyword"),
+        ("belief_id", "keyword"),
+        ("status", "keyword"),
+    ]
+    for field, idx_type in indices:
+        idx_payload = {
+            "field_name": field,
+            "index_schema": {"type": idx_type},
+            "wait": True,
+        }
+        resp = requests.put(
+            f"{QDRANT_URL}/collections/{COLLECTION}/index",
+            json=idx_payload,
+            timeout=10,
+        )
+        if resp.status_code not in (200, 201):
+            log.warning(f"⚠️ Index '{field}' nicht erstellt: {resp.status_code}")
+
+    log.info(f"✅ Collection '{COLLECTION}' angelegt (1024d Cosine, {len(indices)} Indizes)")
+    return True
 
 
 # --- Event CRUD ---
@@ -134,6 +143,30 @@ def create_event(
     return None
 
 
+def _parse_event(p: dict) -> dict:
+    """Extrahiert Event-Daten aus einem Qdrant-Point."""
+    pl = p["payload"]
+    delta = {}
+    raw = pl.get("delta", "{}")
+    if isinstance(raw, str):
+        try:
+            delta = json.loads(raw)
+        except json.JSONDecodeError:
+            log.warning(f"⚠️ Korruptes delta-JSON in Event {pl.get('event_id','')[:8]}")
+            delta = {}
+    elif isinstance(raw, dict):
+        delta = raw
+    return {
+        "event_id": pl.get("event_id"),
+        "event_type": pl.get("event_type"),
+        "belief_id": pl.get("belief_id"),
+        "delta": delta,
+        "status": pl.get("status"),
+        "ingested_at": pl.get("ingested_at"),
+        "event_time": pl.get("event_time"),
+    }
+
+
 def get_events(
     belief_id: str,
     limit: int = 50,
@@ -154,20 +187,7 @@ def get_events(
         log.error(f"❌ Event-Abfrage fehlgeschlagen: {r.status_code}")
         return []
 
-    points = r.json()["result"]["points"]
-    events = []
-    for p in points:
-        pl = p["payload"]
-        events.append({
-            "event_id": pl.get("event_id"),
-            "event_type": pl.get("event_type"),
-            "belief_id": pl.get("belief_id"),
-            "delta": json.loads(pl.get("delta", "{}")),
-            "status": pl.get("status"),
-            "ingested_at": pl.get("ingested_at"),
-            "event_time": pl.get("event_time"),
-        })
-    # Chronologisch sortieren
+    events = [_parse_event(p) for p in r.json()["result"]["points"]]
     events.sort(key=lambda e: e.get("event_time", ""))
     return events
 
@@ -195,19 +215,7 @@ def get_events_since(
         log.error(f"❌ Event-Abfrage fehlgeschlagen: {r.status_code}")
         return []
 
-    points = r.json()["result"]["points"]
-    events = []
-    for p in points:
-        pl = p["payload"]
-        events.append({
-            "event_id": pl.get("event_id"),
-            "event_type": pl.get("event_type"),
-            "belief_id": pl.get("belief_id"),
-            "delta": json.loads(pl.get("delta", "{}")),
-            "status": pl.get("status"),
-            "ingested_at": pl.get("ingested_at"),
-            "event_time": pl.get("event_time"),
-        })
+    events = [_parse_event(p) for p in r.json()["result"]["points"]]
     events.sort(key=lambda e: e.get("event_time", ""))
     return events
 
@@ -219,25 +227,12 @@ def get_recent_events(limit: int = 20) -> list[dict]:
         json={
             "limit": limit,
             "with_payload": True,
-            "order_by": "ingested_at",
         },
         timeout=10,
     )
     if r.status_code != 200:
         return []
-    points = r.json()["result"]["points"]
-    events = []
-    for p in points:
-        pl = p["payload"]
-        events.append({
-            "event_id": pl.get("event_id"),
-            "event_type": pl.get("event_type"),
-            "belief_id": pl.get("belief_id"),
-            "delta": json.loads(pl.get("delta", "{}")),
-            "status": pl.get("status"),
-            "ingested_at": pl.get("ingested_at"),
-        })
-    # Absteigend (neueste zuerst)
+    events = [_parse_event(p) for p in r.json()["result"]["points"]]
     events.sort(key=lambda e: e.get("ingested_at", ""), reverse=True)
     return events
 
