@@ -170,26 +170,45 @@ def _parse_event(p: dict) -> dict:
 def get_events(
     belief_id: str,
     limit: int = 50,
+    fetch_all: bool = False,
 ) -> list[dict]:
     """Fetches all events for a belief (chronological order)."""
-    r = requests.post(
-        f"{QDRANT_URL}/collections/{COLLECTION}/points/scroll",
-        json={
-            "limit": limit,
+    all_events: list[dict] = []
+    offset: Optional[str] = None
+    
+    while True:
+        params = {
+            "limit": limit if not fetch_all else 200,
             "with_payload": True,
-            "filter": {
-                "must": [{"key": "belief_id", "match": {"value": belief_id}}],
-            },
-        },
-        timeout=10,
-    )
-    if r.status_code != 200:
-        log.error(f"❌ Event-Abfrage fehlgeschlagen: {r.status_code}")
-        return []
-
-    events = [_parse_event(p) for p in r.json()["result"]["points"]]
-    events.sort(key=lambda e: e.get("event_time", ""))
-    return events
+            "filter": {"must": [{"key": "belief_id", "match": {"value": belief_id}}]},
+        }
+        if offset:
+            params["offset"] = offset
+        
+        r = requests.post(
+            f"{QDRANT_URL}/collections/{COLLECTION}/points/scroll",
+            json=params,
+            timeout=10,
+        )
+        if r.status_code != 200:
+            log.error(f"❌ Event query failed: {r.status_code}")
+            break
+        
+        data = r.json()["result"]
+        batch = [_parse_event(p) for p in data["points"]]
+        all_events.extend(batch)
+        
+        next_offset = data.get("next_page_offset")
+        if not next_offset or not data["points"]:
+            break
+        offset = str(next_offset)
+        
+        if not fetch_all and len(all_events) >= limit:
+            all_events = all_events[:limit]
+            break
+    
+    all_events.sort(key=lambda e: e.get("event_time", ""))
+    return all_events
 
 
 def get_events_since(
@@ -197,27 +216,47 @@ def get_events_since(
     event_type: Optional[str] = None,
     limit: int = 200,
 ) -> list[dict]:
-    """Fetches all events since a given timestamp (optionally filtered by type)."""
+    """Fetches all events since a given timestamp (optionally filtered by type).
+    Automatically scrolls through all pages for complete results."""
     filters = [{"key": "ingested_at", "range": {"gte": since}}]
     if event_type:
         filters.append({"key": "event_type", "match": {"value": event_type}})
-
-    r = requests.post(
-        f"{QDRANT_URL}/collections/{COLLECTION}/points/scroll",
-        json={
-            "limit": limit,
+    
+    all_events: list[dict] = []
+    offset: Optional[str] = None
+    
+    while True:
+        params = {
+            "limit": limit if not all_events else 500,
             "with_payload": True,
             "filter": {"must": filters},
-        },
-        timeout=10,
-    )
-    if r.status_code != 200:
-        log.error(f"❌ Event-Abfrage fehlgeschlagen: {r.status_code}")
-        return []
-
-    events = [_parse_event(p) for p in r.json()["result"]["points"]]
-    events.sort(key=lambda e: e.get("event_time", ""))
-    return events
+        }
+        if offset:
+            params["offset"] = offset
+        
+        r = requests.post(
+            f"{QDRANT_URL}/collections/{COLLECTION}/points/scroll",
+            json=params,
+            timeout=10,
+        )
+        if r.status_code != 200:
+            log.error(f"❌ Event query failed: {r.status_code}")
+            break
+        
+        data = r.json()["result"]
+        batch = [_parse_event(p) for p in data["points"]]
+        all_events.extend(batch)
+        
+        next_offset = data.get("next_page_offset")
+        if not next_offset or not data["points"]:
+            break
+        offset = str(next_offset)
+        
+        if len(all_events) >= limit:
+            all_events = all_events[:limit]
+            break
+    
+    return all_events
 
 
 def get_recent_events(limit: int = 20) -> list[dict]:

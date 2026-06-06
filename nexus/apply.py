@@ -1,11 +1,12 @@
-"""Nexus Memory — Apply-API + Trust-Recompute (v2.7)
+"""Nexus Memory - Apply-API + Trust-Recompute (v2.7)
 
-Belief-Operationen:
+Belief operations:
   - resolve:     Find or create a belief
   - apply:       Apply delta with automatic event creation
   - override:    User sets explicit value (immune to recompute)
   - recompute:   Recompute trust from evidence
   - govern:      Agent contests, user confirms
+"""
 
 import json
 import logging
@@ -65,8 +66,9 @@ def ensure_beliefs_collection() -> bool:
 
 # --- Belief CRUD ---
 
-def _gen_id() -> str:
-    return str(uuid.uuid4())
+def _gen_id(fact: str) -> str:
+    """Deterministic UUID v5 from fact string - same fact always yields same ID."""
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, fact))
 
 
 def resolve_belief(
@@ -92,7 +94,7 @@ def resolve_belief(
         }
 
     # Neu anlegen
-    belief_id = _gen_id()
+    belief_id = _gen_id(fact)
     now = datetime.now(timezone.utc).isoformat()
     point = {
         "id": belief_id,
@@ -127,7 +129,7 @@ def resolve_belief(
         delta={"fact": fact, "source": source, "trust": trust, "status": status},
         status=status,
     )
-    log.info(f"✅ Belief erstellt: {belief_id[:8]} — {fact[:50]}")
+    log.info(f"✅ Belief erstellt: {belief_id[:8]} - {fact[:50]}")
     return {"belief_id": belief_id, "status": status, "created": True, "trust": trust}
 
 
@@ -135,7 +137,7 @@ def apply_delta(belief_id: str, delta: dict) -> dict:
     """Applies changes to a belief and creates an event.
 
     delta can contain: fact, status, trust, source, rationale
-    Respects explicitly_set=True — those fields are not overwritten."""
+    Respects explicitly_set=True - those fields are not overwritten."""
     # Belief laden
     belief = _get_belief(belief_id)
     if not belief:
@@ -192,7 +194,7 @@ def apply_delta(belief_id: str, delta: dict) -> dict:
 
 
 def user_override(belief_id: str, field: str, value: Any) -> dict:
-    """User explicitly sets a value — immune to recompute."""
+    """User explicitly sets a value - immune to recompute."""
     belief = _get_belief(belief_id)
     if not belief:
         return {"error": True, "message": "Belief not found"}
@@ -231,7 +233,7 @@ def user_override(belief_id: str, field: str, value: Any) -> dict:
 def recompute_trust(belief_id: str) -> dict:
     """Recomputes trust from evidence.trust_contribution (max-aggregation).
 
-    Respects explicitly_set=True — does not overwrite locked fields.
+    Respects explicitly_set=True - does not overwrite locked fields.
     """
     belief = _get_belief(belief_id)
     # TODO: Pagination for >100 beliefs
@@ -283,19 +285,19 @@ def recompute_trust(belief_id: str) -> dict:
 
 
 def recompute_all() -> dict:
-    """Full-scan: recomputes trust for ALL beliefs.
+    """Full-scan: recomputes trust for ALL beliefs (batched per page).
 
     Returns:
-        dict mit total, changed, skipped, overrides
+        dict with total, changed, skipped, overrides
     """
     stats = {"total": 0, "changed": 0, "skipped": 0, "overrides": 0, "errors": 0}
     limit = 100
-    offset = None  # Qdrant uses next_page_offset (cursor-based), not integer offset
+    page_offset = None
 
     while True:
         scroll_params = {"limit": limit, "with_payload": True}
-        if offset is not None:
-            scroll_params["offset"] = offset
+        if page_offset is not None:
+            scroll_params["offset"] = page_offset
 
         r = requests.post(
             f"{QDRANT_URL}/collections/{BELIEFS_COLLECTION}/points/scroll",
@@ -303,7 +305,7 @@ def recompute_all() -> dict:
             timeout=30,
         )
         if r.status_code != 200:
-            log.error(f"❌ Scroll fehlgeschlagen: {r.status_code}")
+            log.error(f"❌ Scroll failed: {r.status_code}")
             stats["errors"] += 1
             break
 
@@ -312,24 +314,58 @@ def recompute_all() -> dict:
         if not points:
             break
 
+        # Batch-update: collect all points needing changes, then one PUT per page
+        batch_updates = []
         for p in points:
             stats["total"] += 1
             bid = p["payload"].get("belief_id", "")
-            result = recompute_trust(bid)
-            if result.get("error"):
-                stats["errors"] += 1
-            elif result.get("skipped"):
+            payload = p["payload"]
+
+            # Check override protection first (avoids N+1 recompute calls)
+            if payload.get("explicitly_set"):
                 stats["skipped"] += 1
-                if result.get("reason") == "user_override":
-                    stats["overrides"] += 1
-            elif result.get("changed"):
+                stats["overrides"] += 1
+                continue
+
+            # Recompute trust locally from evidence
+            evidences = payload.get("evidences", [])
+            if not evidences:
+                stats["skipped"] += 1
+                continue
+
+            new_trust = max(e.get("trust_contribution", 0.0) for e in evidences)
+            old_trust = payload.get("trust", 0.0)
+
+            if abs(new_trust - old_trust) > 1e-9:
+                batch_updates.append({
+                    "id": p["id"],
+                    "payload": {"trust": new_trust},
+                })
                 stats["changed"] += 1
 
-        offset = result.get("next_page_offset")
-        if offset is None:
+        # Batch PUT — one request per page instead of N individual requests
+        if batch_updates:
+            points_payload = []
+            for bu in batch_updates:
+                points_payload.append({
+                    "id": bu["id"],
+                    "payload": bu["payload"],
+                })
+            
+            r2 = requests.put(
+                f"{QDRANT_URL}/collections/{BELIEFS_COLLECTION}/points",
+                json={"points": points_payload},
+                timeout=30,
+            )
+            if r2.status_code not in (200, 201):
+                log.error(f"❌ Batch-update failed: {r2.status_code}")
+                stats["errors"] += len(batch_updates)
+
+        page_offset = result.get("next_page_offset")
+        if page_offset is None:
             break
 
-    log.info(f"📊 Recompute-Scan abgeschlossen: {stats}")
+    log.info(f"📊 Recompute scan done: {stats}")
     return stats
 
 
