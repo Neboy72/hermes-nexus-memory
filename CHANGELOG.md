@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.8.0] — 2026-06-07
+
+### Added
+
+- **MemoryCategory Enum** — `fact`, `belief`, `session`, `rule`, `preference`, `temp` scopes for State-Prefixing (Agentic Design Patterns Ch8)
+  - `nexus_remember()` category parameter now validated against enum
+  - Warning logged for unknown categories
+  - Default stays `"fact"` — fully backward-compatible
+- **source_url parameter** — optional URL field for provenance traceability (Ch14)
+  - Warning logged when `ingest`/`cron` source types omit the URL
+- **confidence parameter** — optional 0.0–1.0 override for provenance confidence
+
+### Fixed
+
+- Category typos now produce a warning instead of silent untracked storage
+
 ## [2.7.1] — 2026-06-06
 
 ### Added

@@ -13,7 +13,7 @@ Hybrid retrieval (BM25 + Vector) kills RAG poisoning. Drift detection flags stal
 [![License](https://img.shields.io/github/license/Neboy72/hermes-nexus-memory?style=flat-square)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![Qdrant v1.17+](https://img.shields.io/badge/qdrant-v1.17+-purple?style=flat-square)](https://qdrant.tech/)
-[![Version](https://img.shields.io/badge/version-2.7.2-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
+[![Version](https://img.shields.io/badge/version-2.8.0-green?style=flat-square)](https://github.com/Neboy72/hermes-nexus-memory/releases)
 
 > **Bot Self-Install:** Tell your AI: *"Read AGENTS.md and install Nexus Memory."* It does the rest.
 
@@ -88,6 +88,17 @@ That's it. Hybrid search activates automatically when `bm25s` is installed.
 | 📜 **Event-API** | 6 event types: created, updated, trust_changed, status_changed, split, user_override | **Every change is traceable.** Full audit trail from creation to today. |
 | 🔧 **Apply-API** | `resolve_belief()`, `apply_delta()`, `user_override()` | **Programmatic belief management.** Automatic event generation on every change. |
 | 🔒 **Override Protection** | `explicitly_set=True` → Recompute skips this belief | **Your changes stay.** No automatic recompute reverts your decisions. |
+
+### v2.8.0 — State-Prefixing + Provenance 🏷️
+
+| Feature | What it does | Why it matters |
+|---------|-------------|---------------|
+| 🏷️ **MemoryCategory Enum** | `fact`, `belief`, `session`, `rule`, `preference`, `temp` scopes | **Scope-aware memory.** Know whether a fact is permanent, a drift-prone assumption, a session note, or a user preference. Backward-compatible — default stays `fact`. |
+| 📎 **source_url** | Optional URL field in `nexus_remember()` | **Cite your sources.** Every ingested fact can carry its origin URL for traceability. Warning logged when `ingest`/`cron` sources skip the URL. |
+| 🎯 **confidence** | Optional 0.0–1.0 override in `nexus_remember()` | **Explicit confidence beats auto-computed.** Override the provenance-derived confidence when you know better. |
+| 🔇 **Unknown-category warning** | `_logger.warning()` when category not in enum | **Catch typos early.** Pass `category="fac"`? You'll see a warning in the log instead of silently storing in an untracked bucket. |
+
+**Migration:** Zero. All defaults unchanged. Existing memories keep `category: "fact"` and their existing provenance.
 
 ### v2.7.2 — Bugfix: Pagination, Index-API, Fact-Match 🐛
 

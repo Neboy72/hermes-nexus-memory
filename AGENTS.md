@@ -18,6 +18,26 @@ That's it. Your agent will:
 5. Restart the gateway
 6. Verify everything works
 
+After installation, your agent can use **State-Prefixing** (Ch8 Agentic Design Patterns):
+- `fact` — verified facts (default, fully backward-compatible)
+- `belief` — drift-prone assumptions (nightly auto-detection)
+- `session` — session-scoped episodic memory
+- `rule` — operating rules
+- `preference` — user preferences
+- `temp` — ephemeral entries with TTL
+
+**New in v2.8.0+:** Pass `category=` when storing memories, e.g.:
+```python
+nexus_remember("Nebo uses DeepSeek Flash", category="fact")
+nexus_remember("Port 6333 might need restart", category="belief")
+nexus_remember("Dark mode preferred", category="preference")
+```
+
+Provenance also extended with `source_url` and `confidence` parameters:
+```python
+nexus_remember("...", source_url="https://...", confidence=0.95)
+```
+
 ---
 
 ## For AI Agents — Installation Instructions
