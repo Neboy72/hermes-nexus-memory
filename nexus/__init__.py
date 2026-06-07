@@ -37,6 +37,17 @@ from nexus.provenance import (
     SOURCE_TYPES,
 )
 
+from enum import Enum
+
+class MemoryCategory(str, Enum):
+    """Memory scopes — entspricht State-Prefixing aus Agentic Design Patterns (Ch8)."""
+    FACT = "fact"          # Dauerhafte, verifizierte Fakten (Default)
+    BELIEF = "belief"      # Veränderliche Annahmen (Drift-Detection-Kandidaten)
+    SESSION = "session"    # Session-spezifisch (Episodic Memory)
+    RULE = "rule"          # Betriebsregeln
+    PREFERENCE = "preference"  # User-Präferenzen
+    TEMP = "temp"          # Temporär, verfällt nach TTL
+
 # -- Lifecycle API (v1.8.0+) --
 from nexus.lifecycle import (
     FactVersion,
@@ -189,7 +200,7 @@ def _today_iso() -> str:
 
 def nexus_remember(
     content: str,
-    category: str = "fact",
+    category: str = MemoryCategory.FACT.value,
     metadata: dict | None = None,
     valid_from: str | None = None,
     provenance: dict | None = None,
@@ -214,7 +225,11 @@ def nexus_remember(
 
     Args:
         content: The memory content text.
-        category: Category tag (default ``"fact"``).
+        category: Category/scope tag. One of MemoryCategory values.
+                  Default ``"fact"``. Use ``"belief"`` for drift-prone
+                  assumptions, ``"session"`` for episodic, ``"rule"`` for
+                  operating rules, ``"preference"`` for user preferences,
+                  ``"temp"`` for ephemeral entries. (State-Prefixing Pattern, Ch8)
         metadata: Additional metadata dict to merge.
         valid_from: ISO-8601 date string. Defaults to today if omitted.
         provenance: Full provenance dict. If None, auto-built from args.
@@ -244,6 +259,9 @@ def nexus_remember(
         "valid_from": valid_from or _today_iso(),
         "valid_until": None,
     }
+    # Validate category (State-Prefixing Pattern, Ch8)
+    if category not in MemoryCategory._value2member_map_:
+        _logger.warning("Unknown category '%s' — expected one of %s", category, [c.value for c in MemoryCategory])
     if metadata:
         payload.update(metadata)
     for k, v in kwargs.items():
