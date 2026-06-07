@@ -18,6 +18,9 @@ That's it. Your agent will:
 5. Restart the gateway
 6. Verify everything works
 
+> **Safety guaranteed.** All cron jobs follow a strict no-chain, fail-once architecture.
+> See [docs/cron-architecture.md](docs/cron-architecture.md) for details.
+
 After installation, your agent can use **State-Prefixing** (Ch8 Agentic Design Patterns):
 - `fact` — verified facts (default, fully backward-compatible)
 - `belief` — drift-prone assumptions (nightly auto-detection)
