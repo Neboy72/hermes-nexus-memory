@@ -619,7 +619,9 @@ if $verify_ok; then
     echo "  1. Tell your Hermes Agent: \"use nexus memory\""
     echo "  2. Memories are stored automatically"
     echo "  3. Search via: nexus_search(query, top_k=5)"
-    echo "  4. For drift detection: cd ${INSTALL_DIR} && python3 -c \"from nexus.health import DriftDetector; print(DriftDetector().run())\""
+    echo "  4. Run drift detection: cd ${INSTALL_DIR} && python3 -c \"from nexus.health import DriftDetector; print(DriftDetector().run())\""
+    echo "  5. Enable Self-Improvement (SICA): scripts/hermes-cron-setup.sh"
+    echo "  6. Enable Session Export: scripts/hermes-cron-setup.sh"
 else
     warn "Some checks failed. Review warnings above."
 fi
