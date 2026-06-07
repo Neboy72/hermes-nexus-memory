@@ -269,8 +269,27 @@ def nexus_remember(
     # Validate category (State-Prefixing Pattern, Ch8)
     if category not in MemoryCategory._value2member_map_:
         _logger.warning("Unknown category '%s' — expected one of %s", category, [c.value for c in MemoryCategory])
+
+    # ── Guardrails (Ch18) — Input Validation ───────────────────────────
+    if len(content) > 5000:
+        _logger.warning(
+            "Memory content exceeds 5000 chars (%d chars) — consider splitting",
+            len(content),
+        )
+    # PII-Hinweis: E-Mail oder Telefonnummer im Content?
+    import re as _re
+    if _re.search(r'[\w.+-]+@[\w-]+\.[\w.-]+', content) and source_type != "chat":
+        _logger.info(
+            "Potential email address in memory (source=%s) — review if intended: %.40s",
+            source_type, content,
+        )
+    if _re.search(r'\+?\d[\d\s\-().]{7,}', content) and source_type not in ("chat", "session"):
+        _logger.info(
+            "Potential phone number in memory (source=%s) — review if intended: %.40s",
+            source_type, content,
+        )
+
     # Warn if source_url missing for non-chat sources
-    if source_url is None and source_type not in ("chat", "manual", "unknown"):
         _logger.warning(
             "Missing source_url for source_type '%s' — content: %.60s",
             source_type, content,
