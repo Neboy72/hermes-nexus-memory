@@ -236,7 +236,45 @@ This runs every night at 4 AM and sends a health report to your Telegram. If not
 (crontab -l 2>/dev/null; echo "0 4 * * * cd ~/.hermes/hermes-nexus-memory && python3 -c \"from nexus.health import DriftDetector; r=DriftDetector().run(); print(r.summary)\"") | crontab -
 ```
 
-### Step 6: Restart Gateway
+### Step 5: Enable Self-Improvement Cycle (SICA, optional)
+
+> Requires Hermes cron support. If not available, skip — the features still work, but you won't get automatic improvement suggestions.
+
+Install the analyzer script:
+```bash
+# Copy SICA analyzer to scripts directory
+mkdir -p ~/.hermes/scripts
+cp examples/nexus-sica-analyzer.py ~/.hermes/scripts/
+```
+
+Set up the daily SICA cron job:
+```bash
+hermes cron create \
+  --name "SICA Self-Improvement" \
+  --schedule "0 5 * * *" \
+  --no-agent \
+  --script "nexus-sica-analyzer.py" \
+  --deliver origin
+```
+
+This runs every night at 5 AM. Scans all beliefs — if nothing is wrong, it stays completely silent (no messages). Only reports when it finds low-confidence beliefs that need review.
+
+### Step 6: Enable Session-to-Memory Export (optional)
+
+> Requires Hermes cron support and session_search tool. Skip if not available.
+
+Set up the daily session export:
+```bash
+hermes cron create \
+  --name "Session-to-Memory Export" \
+  --schedule "0 23 * * *" \
+  --prompt "<See AGENTS.md for full prompt — extract facts from recent sessions and store in Nexus with category='session'>" \
+  --deliver local
+```
+
+This runs every night at 11 PM. Extracts key facts/decisions from today's sessions and stores them as Nexus Memory entries with `category: "session"`.
+
+### Step 7: Restart Gateway
 
 **IMPORTANT:** Run this from a terminal, NOT from inside an agent chat session.
 
