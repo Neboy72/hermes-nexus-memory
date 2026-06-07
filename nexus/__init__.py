@@ -207,6 +207,8 @@ def nexus_remember(
     created_by: str = "System",
     session_id: str | None = None,
     source_type: str = "chat",
+    source_url: str | None = None,
+    confidence: float | None = None,
     tier: int | str | None = None,
     qdrant_host: str = "localhost",
     qdrant_port: int = 6333,
@@ -236,6 +238,10 @@ def nexus_remember(
         created_by: Who created this fact (used for auto-provenance).
         session_id: Hermes session ID (used for auto-provenance).
         source_type: Source type hint (used for auto-provenance).
+        source_url: Source URL for the memory. Recommended for "ingest"
+                    and "cron" source types. (Provenance Pattern, Ch14)
+        confidence: Confidence score 0.0–1.0. Overrides the auto-computed
+                    confidence from provenance. (Provenance Pattern, Ch14)
         qdrant_host: Qdrant host.
         qdrant_port: Qdrant port.
         collection_name: Qdrant collection name.
@@ -255,6 +261,7 @@ def nexus_remember(
     payload: dict[str, Any] = {
         "content": content,
         "category": category,
+        "source_url": source_url,
         "timestamp": datetime.now().isoformat(),
         "valid_from": valid_from or _today_iso(),
         "valid_until": None,
@@ -262,6 +269,12 @@ def nexus_remember(
     # Validate category (State-Prefixing Pattern, Ch8)
     if category not in MemoryCategory._value2member_map_:
         _logger.warning("Unknown category '%s' — expected one of %s", category, [c.value for c in MemoryCategory])
+    # Warn if source_url missing for non-chat sources
+    if source_url is None and source_type not in ("chat", "manual", "unknown"):
+        _logger.warning(
+            "Missing source_url for source_type '%s' — content: %.60s",
+            source_type, content,
+        )
     if metadata:
         payload.update(metadata)
     for k, v in kwargs.items():
@@ -280,6 +293,13 @@ def nexus_remember(
             created_by=created_by,
             content=content,
         )
+
+    # Merge explicit confidence into provenance (if provided)
+    if confidence is not None:
+        prov = payload.get("provenance", {})
+        if isinstance(prov, dict):
+            prov["confidence"] = confidence
+            payload["provenance"] = prov
 
     # ── Tiered Enrichment ──────────────────────────────────────────────
     from nexus.enrich import decide_tier, enrich, EnrichmentTier
